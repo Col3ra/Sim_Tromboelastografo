@@ -430,7 +430,7 @@
           <div>
             <label for="speedRange">Velocidad simulación</label>
             <div class="sliderLine">
-              <input id="speedRange" type="range" min="1" max="12" step="1" value="6" />
+              <input id="speedRange" type="range" min="1" max="60" step="1" value="6" />
               <div class="val" id="speedVal">×6</div>
             </div>
           </div>
@@ -1067,7 +1067,8 @@ function processEvents(){
 
 /* ---------- Muestreo de curva (half-width) ---------- */
 function sampleCurve(){
-  const step = 0.14; // más denso => más “suave” sin romper iPad
+  // Más velocidad => muestreo un poco más denso para que no se "rompa" la traza
+const step = clamp(0.14 - (simSpeed-6)*0.0015, 0.06, 0.14);
   while(curve.lastSampleMin + step <= tMin){
     curve.lastSampleMin += step;
 
