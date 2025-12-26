@@ -1,0 +1,1467 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Simulador de Tromboelastografía (TEG) — Entrenamiento</title>
+  <style>
+    :root{
+      --bg:#0b0d10;
+      --panel:#14181f;
+      --panel2:#10141a;
+      --tile:#1a202a;
+      --tile2:#0f141c;
+      --stroke:#283244;
+      --text:#eaf1ff;
+      --muted:#a9b6cc;
+      --accent:#59b7ff;
+      --ok:#34c759;
+      --warn:#ffd60a;
+      --danger:#ff3b30;
+      --shadow: rgba(0,0,0,.55);
+      --radius:18px;
+      --gap:14px;
+    }
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      background: radial-gradient(1200px 700px at 20% 20%, #142034 0%, #0b0d10 55%, #07080a 100%);
+      color:var(--text);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      overflow:hidden;
+    }
+
+    /* Layout principal (pensado para iPad horizontal) */
+    .app{
+      height:100vh;
+      height:100dvh;
+      padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      display:grid;
+      grid-template-columns: minmax(520px, 1.25fr) minmax(340px, .75fr);
+      gap: var(--gap);
+    }
+    @media (max-width: 980px){
+      .app{ grid-template-columns: 1fr; overflow:auto; }
+      body{ overflow:auto; }
+    }
+
+    .left, .right{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      box-shadow: 0 20px 50px var(--shadow);
+      overflow:hidden;
+      min-height:0;
+    }
+
+    /* Left column */
+    .left{
+      display:grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .brand{
+      display:flex; align-items:baseline; gap:10px;
+      flex-wrap:wrap;
+    }
+    .brand .title{
+      font-weight:700;
+      letter-spacing:.3px;
+      font-size: clamp(16px, 2.1vw, 20px);
+    }
+    .brand .subtitle{
+      color:var(--muted);
+      font-size: clamp(12px, 1.5vw, 13px);
+      white-space:nowrap;
+    }
+    .statusPill{
+      display:flex; align-items:center; gap:8px;
+      padding: 6px 10px;
+      border-radius:999px;
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background: var(--ok);
+      box-shadow:0 0 0 3px rgba(52,199,89,.15);
+    }
+    .dot.pause{ background: var(--warn); box-shadow:0 0 0 3px rgba(255,214,10,.12); }
+    .dot.stop{ background: var(--danger); box-shadow:0 0 0 3px rgba(255,59,48,.12); }
+
+    .canvasWrap{
+      position:relative;
+      background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.35));
+      padding: 12px;
+      min-height:0;
+    }
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+      border-radius: 14px;
+      background:
+        radial-gradient(900px 400px at 50% 0%, rgba(89,183,255,.10), rgba(0,0,0,0) 60%),
+        linear-gradient(180deg, rgba(12,16,22,.88), rgba(9,12,16,.94));
+      border:1px solid rgba(255,255,255,.07);
+    }
+
+    .overlayLegend{
+      position:absolute;
+      left: 22px;
+      top: 18px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      pointer-events:none;
+      opacity:.95;
+    }
+    .tag{
+      display:flex; align-items:center; gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.10);
+      font-size: 12px;
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .swatch{
+      width:10px;height:10px;border-radius:3px;
+      background: var(--accent);
+      box-shadow:0 0 0 3px rgba(89,183,255,.12);
+    }
+
+    .metrics{
+      padding: 10px 12px 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      border-top:1px solid rgba(255,255,255,.08);
+      display:grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 980px){
+      .metrics{ grid-template-columns: repeat(3, 1fr); }
+    }
+    .metric{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.18));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 10px 10px 9px;
+      min-width:0;
+    }
+    .mTop{
+      display:flex; justify-content:space-between; align-items:center;
+      gap:8px;
+    }
+    .mLabel{
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing:.2px;
+      white-space:nowrap;
+    }
+    .mRange{
+      color: rgba(233,241,255,.75);
+      font-size: 11px;
+      white-space:nowrap;
+      opacity:.9;
+    }
+    .mVal{
+      margin-top: 6px;
+      font-weight: 800;
+      font-size: clamp(18px, 2.4vw, 26px);
+      line-height:1.05;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .mHint{
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      opacity:.9;
+    }
+    .badge{
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.2);
+      color: rgba(233,241,255,.85);
+      white-space:nowrap;
+    }
+    .badge.ok{ border-color: rgba(52,199,89,.35); color: rgba(52,199,89,.95); }
+    .badge.warn{ border-color: rgba(255,214,10,.35); color: rgba(255,214,10,.95); }
+    .badge.danger{ border-color: rgba(255,59,48,.35); color: rgba(255,59,48,.95); }
+
+    /* Right column */
+    .right{
+      display:grid;
+      grid-template-rows: auto 1fr auto;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.20));
+    }
+    .panelHeader{
+      padding: 12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .panelHeader .hTitle{
+      font-weight:800;
+      font-size: 14px;
+      letter-spacing:.3px;
+    }
+    .panelHeader .hNote{
+      color: var(--muted);
+      font-size: 12px;
+      white-space:nowrap;
+    }
+
+    .panelBody{
+      padding: 12px;
+      overflow:auto;
+      min-height:0;
+    }
+    .section{
+      margin-bottom: 12px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .sectionTitle{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom: 10px;
+    }
+    .sectionTitle h3{
+      margin:0;
+      font-size: 13px;
+      letter-spacing:.3px;
+    }
+    .sectionTitle small{
+      color: var(--muted);
+      font-size: 12px;
+      white-space:nowrap;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .row3{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 980px){
+      .row, .row3{ grid-template-columns: 1fr; }
+    }
+
+    label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    select, input[type="range"], input[type="number"]{
+      width:100%;
+    }
+    select, input[type="number"]{
+      background: rgba(12,16,22,.8);
+      color: var(--text);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      padding: 10px 10px;
+      outline:none;
+      font-size: 14px;
+    }
+    select:focus, input[type="number"]:focus{ border-color: rgba(89,183,255,.55); box-shadow:0 0 0 3px rgba(89,183,255,.10); }
+
+    .btnRow{
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    button{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor:pointer;
+      user-select:none;
+      touch-action: manipulation;
+    }
+    button:hover{ border-color: rgba(255,255,255,.20); }
+    button.primary{
+      border-color: rgba(89,183,255,.45);
+      background: linear-gradient(180deg, rgba(89,183,255,.22), rgba(0,0,0,.25));
+    }
+    button.danger{
+      border-color: rgba(255,59,48,.45);
+      background: linear-gradient(180deg, rgba(255,59,48,.18), rgba(0,0,0,.25));
+    }
+    button.small{ padding: 8px 10px; border-radius: 12px; font-size: 12px; }
+    button:active{ transform: translateY(1px); }
+
+    .toggle{
+      display:flex; align-items:center; gap:10px;
+    }
+    .switch{
+      width:46px;height:26px;border-radius:999px;
+      background: rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.14);
+      position:relative;
+      flex:0 0 auto;
+      cursor:pointer;
+    }
+    .knob{
+      position:absolute; top:50%; transform:translateY(-50%);
+      left:3px;
+      width:20px;height:20px;border-radius:50%;
+      background: rgba(233,241,255,.92);
+      transition: left .18s ease;
+      box-shadow:0 8px 18px rgba(0,0,0,.35);
+    }
+    .switch.on{ background: rgba(52,199,89,.22); border-color: rgba(52,199,89,.35); }
+    .switch.on .knob{ left:23px; }
+
+    .sliderLine{
+      display:flex; align-items:center; gap:10px;
+    }
+    .sliderLine .val{
+      width:56px;
+      text-align:right;
+      color: rgba(233,241,255,.86);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      white-space:nowrap;
+    }
+
+    .log{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: rgba(233,241,255,.85);
+      background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 10px;
+      max-height: 160px;
+      overflow:auto;
+      line-height:1.35;
+    }
+
+    .footerBar{
+      padding: 10px 12px;
+      border-top:1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.18));
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .mini{
+      color: var(--muted);
+      font-size: 12px;
+      white-space:nowrap;
+    }
+    .kbd{
+      padding: 4px 8px;
+      border:1px solid rgba(255,255,255,.12);
+      border-bottom-color: rgba(255,255,255,.18);
+      background: rgba(0,0,0,.22);
+      border-radius: 10px;
+      font-size: 11px;
+      color: rgba(233,241,255,.80);
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- LEFT -->
+  <div class="left">
+    <div class="topbar">
+      <div class="brand">
+        <div class="title">TEG • Simulador</div>
+        <div class="subtitle">Curva + parámetros para decisiones en quirófano simulado</div>
+      </div>
+      <div class="statusPill" id="statusPill">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">En curso</span>
+        <span class="kbd" id="clockText">t=0.0 min</span>
+      </div>
+    </div>
+
+    <div class="canvasWrap">
+      <canvas id="tegCanvas"></canvas>
+      <div class="overlayLegend">
+        <div class="tag"><span class="swatch"></span> Curva TEG (amplitud mm vs tiempo min)</div>
+        <div class="tag" id="scenarioTag">Escenario: Normal</div>
+      </div>
+    </div>
+
+    <div class="metrics" id="metrics">
+      <!-- injected -->
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="panelHeader">
+      <div>
+        <div class="hTitle">Control / Escenario</div>
+        <div class="hNote">Intervención → efecto real (con retardo)</div>
+      </div>
+      <div class="btnRow">
+        <button class="small primary" id="btnNew">Nuevo test</button>
+        <button class="small" id="btnPause">Pausar</button>
+        <button class="small danger" id="btnReset">Reset</button>
+      </div>
+    </div>
+
+    <div class="panelBody">
+
+      <div class="section">
+        <div class="sectionTitle">
+          <h3>Escenario</h3>
+          <small>preconfigurado</small>
+        </div>
+        <div class="row">
+          <div>
+            <label for="scenarioSelect">Elegir escenario</label>
+            <select id="scenarioSelect"></select>
+          </div>
+          <div>
+            <label for="speedRange">Velocidad simulación</label>
+            <div class="sliderLine">
+              <input id="speedRange" type="range" min="1" max="12" step="1" value="6" />
+              <div class="val" id="speedVal">×6</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px" class="row">
+          <div>
+            <label>Modo avanzado</label>
+            <div class="toggle">
+              <div class="switch" id="advSwitch" role="switch" aria-checked="false" tabindex="0">
+                <div class="knob"></div>
+              </div>
+              <div style="min-width:0">
+                <div style="font-weight:700;font-size:13px">Mostrar variables fisiológicas</div>
+                <div style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  Temp, pH, Ca²⁺, hemodilución, heparina, fibrinólisis
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="helpSelect">Ayuda didáctica</label>
+            <select id="helpSelect">
+              <option value="off">OFF (evaluación)</option>
+              <option value="on" selected>ON (entrenamiento)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="interventionsSection">
+        <div class="sectionTitle">
+          <h3>Intervenciones</h3>
+          <small>efectos acumulativos</small>
+        </div>
+
+        <div class="row3">
+          <button class="primary" data-int="plasma">Plasma (PFC)</button>
+          <button class="primary" data-int="platelets">Plaquetas</button>
+          <button class="primary" data-int="fibrinogen">Crioprecipitado / Fibrinógeno</button>
+        </div>
+        <div style="height:10px"></div>
+        <div class="row3">
+          <button data-int="txa">Ácido tranexámico</button>
+          <button data-int="protamine">Protamina</button>
+          <button data-int="calcium">Calcio</button>
+        </div>
+        <div style="height:10px"></div>
+        <div class="row3">
+          <button data-int="fluids">Fluidos (hemodilución)</button>
+          <button data-int="rbc">Concentrado GR</button>
+          <button data-int="heparin">Heparina</button>
+        </div>
+
+        <div style="margin-top:10px" class="row">
+          <div>
+            <label for="doseSelect">Dosis (simplificada)</label>
+            <select id="doseSelect">
+              <option value="low">Baja</option>
+              <option value="med" selected>Media</option>
+              <option value="high">Alta</option>
+            </select>
+          </div>
+          <div>
+            <label for="delayMode">Retardo de efecto</label>
+            <select id="delayMode">
+              <option value="real" selected>Realista</option>
+              <option value="fast">Rápido (demo)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="advancedSection" style="display:none;">
+        <div class="sectionTitle">
+          <h3>Fisiología (avanzado)</h3>
+          <small>mueve y mira la curva</small>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="tempRange">Temperatura (°C)</label>
+            <div class="sliderLine">
+              <input id="tempRange" type="range" min="32" max="38.5" step="0.1" value="36.5" />
+              <div class="val" id="tempVal">36.5</div>
+            </div>
+          </div>
+          <div>
+            <label for="phRange">pH</label>
+            <div class="sliderLine">
+              <input id="phRange" type="range" min="7.0" max="7.45" step="0.01" value="7.35" />
+              <div class="val" id="phVal">7.35</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:8px"></div>
+
+        <div class="row">
+          <div>
+            <label for="caRange">Calcio ionizado (mmol/L)</label>
+            <div class="sliderLine">
+              <input id="caRange" type="range" min="0.7" max="1.3" step="0.01" value="1.05" />
+              <div class="val" id="caVal">1.05</div>
+            </div>
+          </div>
+          <div>
+            <label for="dilutionRange">Hemodilución (0–100%)</label>
+            <div class="sliderLine">
+              <input id="dilutionRange" type="range" min="0" max="70" step="1" value="10" />
+              <div class="val" id="dilutionVal">10%</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:8px"></div>
+
+        <div class="row">
+          <div>
+            <label for="heparinRange">Heparina (0–100%)</label>
+            <div class="sliderLine">
+              <input id="heparinRange" type="range" min="0" max="100" step="1" value="0" />
+              <div class="val" id="heparinVal">0%</div>
+            </div>
+          </div>
+          <div>
+            <label for="lysisRange">Fibrinólisis (0–100%)</label>
+            <div class="sliderLine">
+              <input id="lysisRange" type="range" min="0" max="100" step="1" value="5" />
+              <div class="val" id="lysisVal">5%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sectionTitle">
+          <h3>Registro</h3>
+          <small>últimas acciones</small>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+
+    </div>
+
+    <div class="footerBar">
+      <div class="mini">Tips: <span class="kbd">Nuevo test</span> reinicia el tiempo. <span class="kbd">Pausar</span> congela curva.</div>
+      <div class="mini" id="hintLine">—</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================
+   Simulador TEG — Motor fisiológico + render de curva
+   Objetivo: que cada intervención modifique el estado y eso
+   se refleje en la curva/parametría con retardo realista.
+   ========================================================= */
+
+/* ---------- Utilidades ---------- */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,t)=> a+(b-a)*t;
+const fmt = (v, d=1)=> Number(v).toFixed(d);
+const now = ()=> performance.now();
+
+/* RNG reproducible (para ruido suave sin saltos) */
+function mulberry32(seed){
+  let t = seed >>> 0;
+  return function(){
+    t += 0x6D2B79F5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function smoothNoise(rng, x){
+  // ruido suave basado en interpolación (value noise)
+  const xi = Math.floor(x);
+  const xf = x - xi;
+  const a = rng() * 2 - 1;
+  const b = rng() * 2 - 1;
+  const t = xf*xf*(3-2*xf);
+  return lerp(a,b,t);
+}
+
+/* ---------- Escenarios (estado "real" oculto) ---------- */
+const SCENARIOS = [
+  {
+    id:"normal",
+    name:"Normal",
+    note:"Coagulación normal (baseline).",
+    state:{
+      factors: 0.95,     // 0..1
+      fibrinogen: 320,   // mg/dL
+      platelets: 220,    // x10^9/L (simplificado)
+      lysis: 0.05,       // 0..1
+      heparin: 0.00,     // 0..1
+      temp: 36.6,
+      ph: 7.36,
+      ca: 1.05,
+      dilution: 0.10,    // 0..0.7
+      txa: 0.0           // 0..1 (antifibrinolítico activo)
+    }
+  },
+  {
+    id:"hemodilution",
+    name:"Hemodilución masiva",
+    note:"Fluidos → dilución de factores/fib/plaquetas.",
+    state:{ factors:0.55, fibrinogen:180, platelets:95, lysis:0.08, heparin:0.00, temp:36.2, ph:7.33, ca:0.95, dilution:0.45, txa:0.0 }
+  },
+  {
+    id:"factor_def",
+    name:"Déficit de factores (PFC requerido)",
+    note:"R prolongado, corrección con plasma.",
+    state:{ factors:0.35, fibrinogen:280, platelets:190, lysis:0.06, heparin:0.00, temp:36.5, ph:7.32, ca:1.00, dilution:0.20, txa:0.0 }
+  },
+  {
+    id:"thrombocytopenia",
+    name:"Trombocitopenia / disfunción plaquetaria",
+    note:"MA bajo con R relativamente normal.",
+    state:{ factors:0.80, fibrinogen:300, platelets:45, lysis:0.06, heparin:0.00, temp:36.7, ph:7.37, ca:1.05, dilution:0.15, txa:0.0 }
+  },
+  {
+    id:"hypofibrinogen",
+    name:"Hipofibrinogenemia",
+    note:"α bajo, K alto, MA bajo; responde a crio/fibrinógeno.",
+    state:{ factors:0.80, fibrinogen:95, platelets:170, lysis:0.06, heparin:0.00, temp:36.4, ph:7.33, ca:1.00, dilution:0.25, txa:0.0 }
+  },
+  {
+    id:"hyperfibrinolysis",
+    name:"Hiperfibrinólisis",
+    note:"LY30 alto; responde a TXA.",
+    state:{ factors:0.85, fibrinogen:260, platelets:160, lysis:0.45, heparin:0.00, temp:36.3, ph:7.30, ca:0.98, dilution:0.25, txa:0.0 }
+  },
+  {
+    id:"heparin_effect",
+    name:"Efecto heparina",
+    note:"R muy prolongado; protamina revierte.",
+    state:{ factors:0.85, fibrinogen:280, platelets:180, lysis:0.06, heparin:0.55, temp:36.5, ph:7.36, ca:1.02, dilution:0.15, txa:0.0 }
+  },
+  {
+    id:"trauma_coagulopathy",
+    name:"Coagulopatía del trauma",
+    note:"Mixta: factores↓, fib↓, plaquetas↓, acidosis/hipotermia, lisis↑.",
+    state:{ factors:0.40, fibrinogen:120, platelets:75, lysis:0.28, heparin:0.00, temp:34.2, ph:7.18, ca:0.85, dilution:0.35, txa:0.0 }
+  },
+  {
+    id:"post_cpb",
+    name:"Post-CEC (cirugía cardíaca)",
+    note:"Heparina residual + plaquetopatía + hemodilución.",
+    state:{ factors:0.55, fibrinogen:160, platelets:85, lysis:0.10, heparin:0.30, temp:35.8, ph:7.30, ca:0.90, dilution:0.40, txa:0.0 }
+  },
+  {
+    id:"pregnancy_hypercoag",
+    name:"Embarazo (hipercoagulable)",
+    note:"R algo corto, MA alto, lisis baja.",
+    state:{ factors:1.05, fibrinogen:480, platelets:240, lysis:0.02, heparin:0.00, temp:36.8, ph:7.40, ca:1.10, dilution:0.08, txa:0.0 }
+  }
+];
+
+/* ---------- Rangos de referencia (para badges) ---------- */
+const REF = {
+  R:  {min:4,  max:8,  unit:"min",  hint:"Factores / heparina"},
+  K:  {min:1,  max:3,  unit:"min",  hint:"Fibrinógeno + cinética"},
+  A:  {min:53, max:72, unit:"°",    hint:"Fibrinógeno funcional"},
+  MA: {min:50, max:70, unit:"mm",   hint:"Plaquetas + fibrina"},
+  LY30:{min:0, max:8,  unit:"%",    hint:"Fibrinólisis"}
+};
+
+/* ---------- UI refs ---------- */
+const el = (id)=> document.getElementById(id);
+const canvas = el("tegCanvas");
+const ctx = canvas.getContext("2d");
+
+const scenarioSelect = el("scenarioSelect");
+const scenarioTag = el("scenarioTag");
+const speedRange = el("speedRange");
+const speedVal = el("speedVal");
+const helpSelect = el("helpSelect");
+
+const btnNew = el("btnNew");
+const btnPause = el("btnPause");
+const btnReset = el("btnReset");
+
+const logEl = el("log");
+const hintLine = el("hintLine");
+
+const statusDot = el("statusDot");
+const statusText = el("statusText");
+const clockText = el("clockText");
+
+const advSwitch = el("advSwitch");
+const advancedSection = el("advancedSection");
+
+const doseSelect = el("doseSelect");
+const delayMode = el("delayMode");
+
+/* advanced sliders */
+const tempRange = el("tempRange"), tempVal = el("tempVal");
+const phRange = el("phRange"), phVal = el("phVal");
+const caRange = el("caRange"), caVal = el("caVal");
+const dilutionRange = el("dilutionRange"), dilutionVal = el("dilutionVal");
+const heparinRange = el("heparinRange"), heparinVal = el("heparinVal");
+const lysisRange = el("lysisRange"), lysisVal = el("lysisVal");
+
+/* ---------- Estado del simulador ---------- */
+let running = true;
+let simSpeed = Number(speedRange.value);  // multiplicador de tiempo (minutos simulados por minuto real)
+let startT = now();
+let pausedAt = null;
+let tMin = 0; // tiempo simulado transcurrido (min)
+
+let rng = mulberry32(123456);
+let noiseSeed = mulberry32(987654);
+
+/* Estado fisiológico actual (se va modificando) */
+let state = null;
+
+/* Eventos (intervenciones con retardo) */
+let pendingEvents = []; // {atMin, applyFn, label}
+
+/* Cache de parámetros TEG */
+let teg = {R:6, K:2, A:60, MA:60, LY30:2, CI:0};
+
+/* Buffer de curva */
+const curve = {
+  maxMin: 60,          // ventana de 60 min
+  samples: [],         // {t, amp}
+  lastSampleMin: 0
+};
+
+/* ---------- Construcción UI métricas ---------- */
+const METRIC_ORDER = [
+  {key:"R", label:"R",   range:"4–8 min"},
+  {key:"K", label:"K",   range:"1–3 min"},
+  {key:"A", label:"α",   range:"53–72°"},
+  {key:"MA",label:"MA",  range:"50–70 mm"},
+  {key:"LY30",label:"LY30", range:"0–8 %"}
+];
+
+function badgeFor(key, value){
+  const r = REF[key];
+  if(!r) return {cls:"", text:""};
+  if(value < r.min) return {cls:"warn", text:"Bajo"};
+  if(value > r.max) return {cls:"warn", text:"Alto"};
+  return {cls:"ok", text:"Normal"};
+}
+
+function buildMetrics(){
+  const host = el("metrics");
+  host.innerHTML = "";
+  for(const m of METRIC_ORDER){
+    const card = document.createElement("div");
+    card.className = "metric";
+    card.innerHTML = `
+      <div class="mTop">
+        <div class="mLabel">${m.label}</div>
+        <div class="mRange">${m.range}</div>
+      </div>
+      <div class="mVal" id="m_${m.key}">—</div>
+      <div class="mTop" style="margin-top:6px">
+        <div class="mHint">${REF[m.key].hint}</div>
+        <div class="badge" id="b_${m.key}">—</div>
+      </div>
+    `;
+    host.appendChild(card);
+  }
+}
+buildMetrics();
+
+/* ---------- Log ---------- */
+function log(msg){
+  const ts = fmt(tMin,1).padStart(5," ");
+  logEl.textContent = `[${ts} min] ${msg}\n` + logEl.textContent;
+}
+log("Simulador listo.");
+
+/* ---------- Helpers: clonar estado ---------- */
+function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
+
+/* ---------- Motor: derivar TEG desde fisiología ---------- */
+function computeTEGFromState(s){
+  // Ajustes por hemodilución: reduce efectivamente factores/fib/plaquetas
+  const dil = clamp(s.dilution, 0, 0.70);
+  const effFactors = clamp(s.factors * (1 - 0.85*dil), 0.05, 1.25);
+  const effFib = clamp(s.fibrinogen * (1 - 0.80*dil), 30, 650);
+  const effPlt = clamp(s.platelets * (1 - 0.75*dil), 5, 350);
+
+  // Efectos de temp/pH/Ca sobre cinética (simplificados)
+  const tempPenalty = clamp((36.5 - s.temp) * 0.10, -0.2, 0.9); // hipotermia prolonga
+  const phPenalty = clamp((7.35 - s.ph) * 1.8, -0.2, 0.9);      // acidosis prolonga
+  const caPenalty = clamp((1.05 - s.ca) * 1.2, -0.2, 0.9);      // hipocalcemia prolonga
+
+  // Heparina prolonga R de manera dominante
+  const hep = clamp(s.heparin, 0, 1);
+
+  // --- R (min): factores + heparina + fisiología
+  let R = 5.8;
+  R *= (1 + 2.4*(1 - effFactors));      // déficit de factores → R ↑
+  R *= (1 + 3.2*hep);                   // heparina → R ↑↑
+  R *= (1 + 0.55*tempPenalty + 0.55*phPenalty + 0.35*caPenalty);
+  R = clamp(R, 2.0, 35.0);
+
+  // --- α (°) y K (min): fibrinógeno + cinética global
+  const fibNorm = clamp((effFib - 80) / (450 - 80), 0, 1);   // 80..450
+  const factorNorm = clamp(effFactors, 0, 1.1) / 1.1;
+  let A = 44 + 34*(0.72*fibNorm + 0.28*factorNorm);
+  A -= 12*(tempPenalty + phPenalty)*0.35;
+  A = clamp(A, 30, 80);
+
+  // K inverso a la pendiente (α)
+  let K = 4.2 - (A - 40)*0.055; // más α → menor K
+  K *= (1 + 0.25*(1 - effFactors));
+  K = clamp(K, 0.7, 12.0);
+
+  // --- MA (mm): plaquetas + fibrina (fibrinógeno)
+  const pltNorm = clamp((effPlt - 30) / (250 - 30), 0, 1);  // 30..250
+  const fibForMA = clamp((effFib - 80) / (450 - 80), 0, 1);
+  let MA = 44 + 30*(0.62*pltNorm + 0.38*fibForMA);
+
+  // disfunción plaquetaria en post-CEC (aprox): si heparina moderada + dilución alta
+  if(dil > 0.35 && hep > 0.20) MA -= 5;
+
+  MA -= 8*(tempPenalty + phPenalty)*0.25;
+  MA = clamp(MA, 25, 80);
+
+  // --- LY30 (%): fibrinólisis modulada por TXA
+  const baseLysis = clamp(s.lysis, 0, 1);
+  const txa = clamp(s.txa, 0, 1); // reduce lisis
+  const lysisEff = clamp(baseLysis * (1 - 0.75*txa), 0, 1);
+
+  let LY30 = 1.5 + 70*lysisEff*lysisEff; // no lineal: cuando sube, sube “en serio”
+  LY30 = clamp(LY30, 0, 60);
+
+  // CI (muy simplificado, para modo avanzado)
+  // (No es el cálculo exacto de Haemonetics; es un índice pedagógico)
+  const CI = clamp(
+    ( (7 - R) * 0.25 ) + ( (65 - K*10) * 0.01 ) + ( (A - 60) * 0.05 ) + ( (MA - 60) * 0.06 ) - (LY30 * 0.02 ),
+    -6, 6
+  );
+
+  return {R, K, A, MA, LY30, CI};
+}
+
+/* ---------- Curva: amplitud en función del tiempo y parámetros ---------- */
+function amplitudeAt(t, p){
+  // t en minutos
+  const R = p.R;
+  const K = p.K;
+  const MA = p.MA;
+  const alpha = p.A;
+  const LY30 = p.LY30;
+
+  // tramo 1: pre-coágulo
+  if(t <= R) return 0;
+
+  // tasa de ascenso según alpha (más alpha, más rápido)
+  const slope = clamp((alpha - 30)/50, 0.05, 1.0);
+
+  // tramo 2: formación inicial (R->R+K): crecimiento rápido
+  const t1 = R;
+  const t2 = R + K;
+  if(t > t1 && t <= t2){
+    const u = (t - t1) / Math.max(0.001, (t2 - t1));
+    const eased = u*u*(3-2*u); // smoothstep
+    return MA * (0.12 + 0.55*eased*slope);
+  }
+
+  // tramo 3: acercamiento a MA (asintótico)
+  // definimos un "tiempo de pico" aproximado
+  const tPeak = R + K + lerp(6, 14, (1 - slope));
+  let amp = MA * (1 - Math.exp(-(t - t2) * (0.22*slope)));
+  amp = clamp(amp, 0, MA);
+
+  // tramo 4: lisis (después del pico): decaimiento exponencial según LY30
+  if(t > tPeak){
+    // Queremos que a +30 min del pico quede MA*(1 - LY30/100)
+    const target = clamp(1 - LY30/100, 0.05, 1);
+    const rate = -Math.log(target) / 30.0; // por minuto
+    const dt = (t - tPeak);
+    amp = MA * Math.exp(-rate * dt);
+  }
+
+  return clamp(amp, 0, MA);
+}
+
+/* ---------- Render (Canvas) ---------- */
+function resizeCanvas(){
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1)); // iPad: mantener performance
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize", ()=> {
+  resizeCanvas();
+  redraw(true);
+});
+resizeCanvas();
+
+function drawGrid(w,h){
+  ctx.save();
+  ctx.lineWidth = 1;
+
+  // grid principal
+  ctx.strokeStyle = "rgba(255,255,255,.06)";
+  const pad = 18;
+  const left = pad, top = pad, right = w-pad, bottom = h-pad;
+
+  // ejes
+  ctx.beginPath();
+  ctx.moveTo(left, top);
+  ctx.lineTo(left, bottom);
+  ctx.lineTo(right, bottom);
+  ctx.stroke();
+
+  // vertical (tiempo)
+  const xTicks = 12; // cada 5 min si max=60
+  for(let i=1;i<=xTicks;i++){
+    const x = lerp(left, right, i/xTicks);
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+
+    // labels (cada 10 min)
+    if(i % 2 === 0){
+      ctx.fillStyle = "rgba(233,241,255,.55)";
+      ctx.font = "12px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      const t = (curve.maxMin * i/xTicks);
+      ctx.fillText(`${Math.round(t)}m`, x, bottom+6);
+    }
+  }
+
+  // horizontal (amplitud)
+  const yTicks = 8; // hasta 80mm
+  for(let i=1;i<=yTicks;i++){
+    const y = lerp(bottom, top, i/yTicks);
+    ctx.beginPath();
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
+    ctx.stroke();
+
+    if(i % 2 === 0){
+      ctx.fillStyle = "rgba(233,241,255,.55)";
+      ctx.font = "12px system-ui";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      const mm = Math.round(80 * i/yTicks);
+      ctx.fillText(`${mm}`, left-8, y);
+    }
+  }
+
+  // labels ejes
+  ctx.fillStyle = "rgba(233,241,255,.65)";
+  ctx.font = "12px system-ui";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText("Amplitud (mm)", left+6, top+4);
+
+  ctx.textAlign = "right";
+  ctx.fillText("Tiempo", right-4, bottom+6);
+
+  ctx.restore();
+}
+
+function redraw(force=false){
+  const w = canvas.getBoundingClientRect().width;
+  const h = canvas.getBoundingClientRect().height;
+
+  // fondo sutil de “glow” según estado
+  ctx.clearRect(0,0,w,h);
+
+  drawGrid(w,h);
+
+  // curva
+  const pad = 18;
+  const left = pad, top = pad, right = w-pad, bottom = h-pad;
+  const xScale = (right-left) / curve.maxMin;
+  const yScale = (bottom-top) / 80; // 0..80mm
+
+  // zonas (opcional) - fibrinólisis resaltada si LY30 alto
+  if(teg.LY30 > 12){
+    ctx.save();
+    ctx.fillStyle = "rgba(255,59,48,.07)";
+    ctx.fillRect(left, top, right-left, bottom-top);
+    ctx.restore();
+  }
+
+  // líneas guía R y MA
+  ctx.save();
+  ctx.strokeStyle = "rgba(89,183,255,.18)";
+  ctx.setLineDash([6,6]);
+  // R vertical
+  ctx.beginPath();
+  ctx.moveTo(left + teg.R*xScale, top);
+  ctx.lineTo(left + teg.R*xScale, bottom);
+  ctx.stroke();
+  // MA horizontal
+  ctx.beginPath();
+  ctx.moveTo(left, bottom - teg.MA*yScale);
+  ctx.lineTo(right, bottom - teg.MA*yScale);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // curva real
+  ctx.save();
+  ctx.lineWidth = 2.3;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(89,183,255,.95)";
+  ctx.shadowColor = "rgba(89,183,255,.25)";
+  ctx.shadowBlur = 12;
+
+  ctx.beginPath();
+  let started = false;
+  for(const s of curve.samples){
+    const x = left + s.t*xScale;
+    const y = bottom - s.amp*yScale;
+    if(!started){
+      ctx.moveTo(x,y); started = true;
+    } else {
+      ctx.lineTo(x,y);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // texto de estado (sin superponer números grandes)
+  ctx.save();
+  ctx.fillStyle = "rgba(233,241,255,.70)";
+  ctx.font = "13px system-ui";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+  ctx.fillText(`R=${fmt(teg.R,1)} min  K=${fmt(teg.K,1)} min  α=${fmt(teg.A,0)}°  MA=${fmt(teg.MA,0)} mm  LY30=${fmt(teg.LY30,0)}%`,
+               right, top+4);
+  ctx.restore();
+}
+
+/* ---------- Update métricas UI ---------- */
+function setMetric(key, value){
+  const vEl = el(`m_${key}`);
+  const bEl = el(`b_${key}`);
+  if(!vEl || !bEl) return;
+
+  let display = value;
+  if(key === "A") display = fmt(value,0);
+  else if(key === "MA") display = fmt(value,0);
+  else if(key === "LY30") display = fmt(value,0);
+  else display = fmt(value,1);
+
+  vEl.textContent = display + " " + (REF[key]?.unit || "");
+  const b = badgeFor(key, value);
+  bEl.className = `badge ${b.cls}`;
+  bEl.textContent = b.text || "—";
+}
+
+function updateHints(){
+  if(helpSelect.value === "off"){
+    hintLine.textContent = "Modo evaluación: sin pistas.";
+    return;
+  }
+  // reglas simples de conducta (didácticas)
+  let hints = [];
+  if(teg.R > 10) hints.push("R prolongado → pensar factores / heparina (PFC / protamina según contexto).");
+  if(teg.MA < 45) hints.push("MA bajo → pensar plaquetas y/o fibrinógeno (plaquetas / crio).");
+  if(teg.A < 50 || teg.K > 4) hints.push("α bajo o K alto → sospechar hipofibrinogenemia (crio/fibrinógeno).");
+  if(teg.LY30 > 12) hints.push("LY30 alto → fibrinólisis (considerar TXA).");
+  if(hints.length===0) hints.push("Curva compatible con hemostasia adecuada.");
+  hintLine.textContent = hints[0];
+}
+
+/* ---------- Aplicar eventos pendientes ---------- */
+function processEvents(){
+  const due = pendingEvents.filter(e => e.atMin <= tMin);
+  if(due.length){
+    // mantener orden y aplicar
+    due.sort((a,b)=>a.atMin-b.atMin);
+    for(const e of due){
+      e.applyFn();
+      log(`Efecto: ${e.label}`);
+    }
+    pendingEvents = pendingEvents.filter(e => e.atMin > tMin);
+  }
+}
+
+/* ---------- Muestreo de curva ---------- */
+function sampleCurve(){
+  // muestrear cada ~0.15 min (9s simulados) para suavidad
+  const step = 0.15;
+  while(curve.lastSampleMin + step <= tMin){
+    curve.lastSampleMin += step;
+
+    // amplitud base
+    const base = amplitudeAt(curve.lastSampleMin, teg);
+
+    // ruido leve (proporcional a amplitud y al tiempo)
+    const n = smoothNoise(noiseSeed, curve.lastSampleMin*0.6) * 0.9;
+    const amp = clamp(base + n * (0.25 + base/90), 0, 80);
+
+    curve.samples.push({t: curve.lastSampleMin, amp});
+
+    // mantener ventana
+    const minT = tMin - curve.maxMin;
+    if(minT > 0){
+      while(curve.samples.length && curve.samples[0].t < minT){
+        curve.samples.shift();
+      }
+      // re-normalizar t para ventana (mantener 0..maxMin)
+      for(const s of curve.samples) s.t = s.t - minT;
+    }
+  }
+}
+
+/* ---------- Bucle principal ---------- */
+let lastFrame = now();
+function tick(){
+  requestAnimationFrame(tick);
+  const t = now();
+  const dtReal = (t - lastFrame) / 1000; // segundos reales
+  lastFrame = t;
+
+  if(!running) return;
+
+  // tiempo simulado (min): dtReal (seg) -> min, multiplicado por speed
+  const dtMin = (dtReal / 60) * simSpeed;
+  tMin += dtMin;
+
+  // aplicar eventos programados
+  processEvents();
+
+  // recomputar parámetros TEG desde estado fisiológico actual
+  teg = computeTEGFromState(state);
+
+  // muestrear curva
+  sampleCurve();
+
+  // render
+  redraw();
+
+  // UI text
+  clockText.textContent = `t=${fmt(tMin,1)} min`;
+
+  // actualizar métricas
+  setMetric("R", teg.R);
+  setMetric("K", teg.K);
+  setMetric("A", teg.A);
+  setMetric("MA", teg.MA);
+  setMetric("LY30", teg.LY30);
+
+  updateHints();
+}
+
+/* ---------- Control de tiempo (nuevo / reset / pausar) ---------- */
+function setRunning(isRunning){
+  running = isRunning;
+  statusDot.className = "dot" + (running ? "" : " pause");
+  statusText.textContent = running ? "En curso" : "Pausado";
+  btnPause.textContent = running ? "Pausar" : "Reanudar";
+}
+
+function newTest(keepScenario=true){
+  tMin = 0;
+  curve.samples = [];
+  curve.lastSampleMin = 0;
+  pendingEvents = [];
+  noiseSeed = mulberry32((Math.random()*1e9)>>>0);
+
+  if(!keepScenario){
+    // nada
+  }
+  teg = computeTEGFromState(state);
+  setRunning(true);
+  log("Nuevo test iniciado.");
+  redraw(true);
+}
+
+function resetAll(){
+  // vuelve a escenario seleccionado
+  loadScenario(scenarioSelect.value);
+  newTest(true);
+  log("Reset completo al escenario.");
+}
+
+/* ---------- Escenarios: carga ---------- */
+function populateScenarios(){
+  scenarioSelect.innerHTML = "";
+  for(const s of SCENARIOS){
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = s.name;
+    scenarioSelect.appendChild(opt);
+  }
+}
+
+function getScenarioById(id){
+  return SCENARIOS.find(s=>s.id===id) || SCENARIOS[0];
+}
+
+function syncAdvancedSliders(){
+  tempRange.value = state.temp; tempVal.textContent = fmt(state.temp,1);
+  phRange.value = state.ph; phVal.textContent = fmt(state.ph,2);
+  caRange.value = state.ca; caVal.textContent = fmt(state.ca,2);
+  dilutionRange.value = Math.round(state.dilution*100); dilutionVal.textContent = `${Math.round(state.dilution*100)}%`;
+  heparinRange.value = Math.round(state.heparin*100); heparinVal.textContent = `${Math.round(state.heparin*100)}%`;
+  lysisRange.value = Math.round(state.lysis*100); lysisVal.textContent = `${Math.round(state.lysis*100)}%`;
+}
+
+function loadScenario(id){
+  const sc = getScenarioById(id);
+  state = deepCopy(sc.state);
+
+  scenarioTag.textContent = `Escenario: ${sc.name}`;
+  el("scenarioTag").title = sc.note || sc.name;
+
+  // sincronizar sliders avanzados con estado
+  syncAdvancedSliders();
+
+  log(`Escenario cargado: ${sc.name}.`);
+  teg = computeTEGFromState(state);
+  redraw(true);
+}
+
+/* ---------- Intervenciones (con retardo) ---------- */
+function eventDelay(){
+  const mode = delayMode.value;
+  if(mode === "fast") return {min: 0.7, max: 2.0}; // demo
+  return {min: 2.5, max: 7.0}; // realista
+}
+
+function doseMultiplier(){
+  const d = doseSelect.value;
+  if(d==="low") return 0.7;
+  if(d==="high") return 1.3;
+  return 1.0;
+}
+
+function schedule(label, applyFn, baseMin, baseMax){
+  const mult = doseMultiplier();
+  const del = eventDelay();
+  const jitter = lerp(del.min, del.max, rng());
+  const at = tMin + jitter;
+  pendingEvents.push({
+    atMin: at,
+    label: `${label} (≈${fmt(jitter,1)} min)`,
+    applyFn: ()=> applyFn(mult)
+  });
+  log(`Intervención: ${label} → efecto en ~${fmt(jitter,1)} min`);
+}
+
+/* Efectos: modifican el state (fisiología) */
+const interventions = {
+  plasma(mult){
+    schedule("PFC", (m)=>{
+      state.factors = clamp(state.factors + 0.22*m, 0.05, 1.25);
+      // algo de fibrinógeno
+      state.fibrinogen = clamp(state.fibrinogen + 30*m, 30, 650);
+      // leve dilución inversa (si asumimos repleción efectiva)
+      state.dilution = clamp(state.dilution - 0.03*m, 0, 0.70);
+    });
+  },
+  platelets(mult){
+    schedule("Plaquetas", (m)=>{
+      state.platelets = clamp(state.platelets + 55*m, 5, 350);
+      state.dilution = clamp(state.dilution - 0.02*m, 0, 0.70);
+    });
+  },
+  fibrinogen(mult){
+    schedule("Crio / Fibrinógeno", (m)=>{
+      state.fibrinogen = clamp(state.fibrinogen + 140*m, 30, 650);
+      state.dilution = clamp(state.dilution - 0.01*m, 0, 0.70);
+    });
+  },
+  txa(mult){
+    schedule("TXA", (m)=>{
+      state.txa = clamp(state.txa + 0.55*m, 0, 1);
+      // también reduce lisis “efectiva” a lo largo del tiempo (modelo simple)
+    });
+  },
+  protamine(mult){
+    schedule("Protamina", (m)=>{
+      state.heparin = clamp(state.heparin - 0.55*m, 0, 1);
+    });
+  },
+  calcium(mult){
+    schedule("Calcio", (m)=>{
+      state.ca = clamp(state.ca + 0.12*m, 0.70, 1.30);
+    });
+  },
+  fluids(mult){
+    schedule("Fluidos", (m)=>{
+      state.dilution = clamp(state.dilution + 0.12*m, 0, 0.70);
+      // hemodilución empeora factores/fib/plt efectivamente (se refleja en computeTEG)
+    });
+  },
+  rbc(mult){
+    schedule("Concentrado GR", (m)=>{
+      // En TEG puro el impacto es indirecto; lo dejamos casi neutro.
+      // En entrenamiento, lo registramos pero no "arregla" la curva.
+      state.ph = clamp(state.ph + 0.01*0.15*m, 7.0, 7.45);
+    });
+  },
+  heparin(mult){
+    schedule("Heparina", (m)=>{
+      state.heparin = clamp(state.heparin + 0.25*m, 0, 1);
+    });
+  }
+};
+
+/* ---------- Eventos UI ---------- */
+populateScenarios();
+scenarioSelect.value = "normal";
+loadScenario("normal");
+newTest(true);
+
+scenarioSelect.addEventListener("change", ()=>{
+  loadScenario(scenarioSelect.value);
+  newTest(true);
+});
+
+speedRange.addEventListener("input", ()=>{
+  simSpeed = Number(speedRange.value);
+  speedVal.textContent = `×${simSpeed}`;
+});
+
+btnPause.addEventListener("click", ()=>{
+  setRunning(!running);
+  log(running ? "Reanudado." : "Pausado.");
+});
+
+btnNew.addEventListener("click", ()=>{
+  newTest(true);
+});
+
+btnReset.addEventListener("click", ()=>{
+  resetAll();
+});
+
+/* Botones intervención */
+document.querySelectorAll("[data-int]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const k = btn.getAttribute("data-int");
+    if(interventions[k]){
+      interventions[k]();
+    }
+  });
+});
+
+/* Toggle avanzado */
+function setAdvanced(on){
+  advSwitch.classList.toggle("on", on);
+  advSwitch.setAttribute("aria-checked", on ? "true" : "false");
+  advancedSection.style.display = on ? "" : "none";
+}
+setAdvanced(false);
+
+advSwitch.addEventListener("click", ()=> setAdvanced(!advSwitch.classList.contains("on")));
+advSwitch.addEventListener("keydown", (e)=>{
+  if(e.key==="Enter" || e.key===" "){
+    e.preventDefault();
+    setAdvanced(!advSwitch.classList.contains("on"));
+  }
+});
+
+/* Advanced sliders -> state */
+function bindAdvanced(){
+  tempRange.addEventListener("input", ()=>{
+    state.temp = Number(tempRange.value);
+    tempVal.textContent = fmt(state.temp,1);
+  });
+  phRange.addEventListener("input", ()=>{
+    state.ph = Number(phRange.value);
+    phVal.textContent = fmt(state.ph,2);
+  });
+  caRange.addEventListener("input", ()=>{
+    state.ca = Number(caRange.value);
+    caVal.textContent = fmt(state.ca,2);
+  });
+  dilutionRange.addEventListener("input", ()=>{
+    state.dilution = clamp(Number(dilutionRange.value)/100, 0, 0.70);
+    dilutionVal.textContent = `${Math.round(state.dilution*100)}%`;
+  });
+  heparinRange.addEventListener("input", ()=>{
+    state.heparin = clamp(Number(heparinRange.value)/100, 0, 1);
+    heparinVal.textContent = `${Math.round(state.heparin*100)}%`;
+  });
+  lysisRange.addEventListener("input", ()=>{
+    state.lysis = clamp(Number(lysisRange.value)/100, 0, 1);
+    lysisVal.textContent = `${Math.round(state.lysis*100)}%`;
+  });
+}
+bindAdvanced();
+
+/* Prevenir scroll accidental en canvas en iPad */
+canvas.addEventListener("touchmove", (e)=> e.preventDefault(), {passive:false});
+
+/* Inicialización final */
+setRunning(true);
+redraw(true);
+tick();
+</script>
+</body>
+</html>
