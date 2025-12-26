@@ -798,37 +798,52 @@ function computeTEGFromState(s){
 function halfWidthAt(t, p){
   const R = p.R, K = p.K, MA = p.MA, alpha = p.A, LY30 = p.LY30;
 
-  // antes de R: baseline
   if(t <= R) return 0;
 
-  // una “apertura” mínima para que se vea el inicio (más real)
-  // en equipos reales se ve una pequeña separación por ruido mecánico
-  const micro = clamp((t - R) * 1.8, 0, 2.2);
+  // microapertura inicial (ruido mecánico / baseline)
+  const micro = clamp((t - R) * 1.6, 0, 2.0);
 
-  const slope = clamp((alpha - 30)/50, 0.05, 1.0);
-  const t1 = R;
-  const t2 = R + K;
+  // Control de velocidad del ascenso según alpha (0.2..1.0)
+  const slope = clamp((alpha - 30) / 50, 0.20, 1.00);
 
-  let w = 0;
+  // Objetivo “clínico” para K: tiempo desde R hasta 20 mm
+  const A20 = 20; // mm
+  const tK = R + Math.max(0.2, K); // punto teórico de K (aprox)
 
-  if(t > t1 && t <= t2){
-    const u = (t - t1) / Math.max(0.001, (t2 - t1));
-    const eased = u*u*(3-2*u);
-    w = MA * (0.08 + 0.60*eased*slope);
-  } else {
-    const tPeak = R + K + lerp(6, 14, (1 - slope));
-    w = MA * (1 - Math.exp(-(t - t2) * (0.22*slope)));
-    w = clamp(w, 0, MA);
+  // Parámetro de sigmoide: más slope => más empinada
+  // Centramos la sigmoide entre R y (R+K) para que K tenga sentido visual.
+  const mid = R + 0.55 * (tK - R);
+  const sharp = lerp(0.35, 0.90, slope); // pendiente sigmoide
 
-    if(t > tPeak){
-      const target = clamp(1 - LY30/100, 0.05, 1);
-      const rate = -Math.log(target) / 30.0;
-      const dt = (t - tPeak);
-      w = MA * Math.exp(-rate * dt);
-    }
+  // Crecimiento sigmoide hacia MA (0..MA)
+  // Normalizamos tiempo alrededor de 'mid'
+  const z = (t - mid) / Math.max(0.001, (tK - R)) * sharp;
+  let w = MA / (1 + Math.exp(-z));
+
+  // Ajuste para que antes de R sea ~0, y después converja a MA
+  // (La sigmoide nunca llega exactamente a 0, lo “recortamos” con smoothstep)
+  const u = clamp((t - R) / Math.max(0.001, (tK - R)), 0, 1);
+  const gate = u*u*(3-2*u);
+  w *= gate;
+
+  // Tiempo aproximado de MA (donde se estabiliza)
+  // En trazas reales suele “aplanarse” luego de unos minutos tras K
+  const tMA = R + K + lerp(8, 14, (1 - slope));
+
+  // Plateau muy leve (para que no sea una meseta perfecta)
+  if(t > tMA){
+    const settle = 1 - 0.02 * (1 - Math.exp(-(t - tMA) * 0.15)); // baja 2% máximo
+    w *= settle;
   }
 
-  // suma microapertura (solo al inicio)
+  // Lisis: a los 30 min post tMA, debe quedar en MA*(1 - LY30/100)
+  if(t > tMA){
+    const target = clamp(1 - LY30/100, 0.05, 1);
+    const rate = -Math.log(target) / 30.0;
+    const dt = (t - tMA);
+    w *= Math.exp(-rate * dt);
+  }
+
   return clamp(Math.max(w, micro), 0, 80);
 }
 
@@ -922,6 +937,171 @@ function drawGrid(w,h){
   ctx.restore();
 }
 
+function tAtAmp(targetAmp, p){
+  // busca el primer tiempo (>=R) donde halfWidth >= targetAmp
+  // simple search, barato y estable
+  const maxSearch = 60;
+  const dt = 0.05; // 3 segundos
+  for(let tt = p.R; tt <= maxSearch; tt += dt){
+    if(halfWidthAt(tt, p) >= targetAmp) return tt;
+  }
+  return null;
+}
+
+function drawLabel(x, y, text, color){
+  ctx.save();
+  ctx.font = "12px system-ui";
+  ctx.fillStyle = color;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  // halo oscuro mínimo para legibilidad sin “cartel”
+  ctx.shadowColor = "rgba(0,0,0,.55)";
+  ctx.shadowBlur = 6;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function drawMarkers(w,h, p){
+  const pad = 18;
+  const left = pad, top = pad, right = w-pad, bottom = h-pad;
+  const midY = (top + bottom)/2;
+  const xScale = (right-left) / curve.maxMin;
+  const yScale = (bottom-top) / (2*80);
+
+  // Colores sutiles
+  const cR   = "rgba(89,183,255,.65)";
+  const cK   = "rgba(255,214,10,.55)";
+  const cA   = "rgba(52,199,89,.55)";
+  const cMA  = "rgba(233,241,255,.55)";
+  const cLY  = "rgba(255,59,48,.55)";
+
+  // --- R (línea vertical)
+  const xR = left + p.R * xScale;
+  ctx.save();
+  ctx.strokeStyle = cR;
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([5,6]);
+  ctx.beginPath();
+  ctx.moveTo(xR, top);
+  ctx.lineTo(xR, bottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+  drawLabel(clamp(xR+6, left+6, right-60), top+18, `R`, cR);
+
+  // --- K: desde R hasta 20 mm (A20)
+  const A20 = 20;
+  const t20 = tAtAmp(A20, p);
+  if(t20){
+    const x20 = left + t20 * xScale;
+    const y20Top = midY - (A20 * yScale);
+    const y20Bot = midY + (A20 * yScale);
+
+    // bracket horizontal R->t20 sobre la línea central
+    ctx.save();
+    ctx.strokeStyle = cK;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(xR, midY);
+    ctx.lineTo(x20, midY);
+    ctx.stroke();
+
+    // “tics” verticales para que se entienda que es K
+    ctx.beginPath();
+    ctx.moveTo(xR, midY-8); ctx.lineTo(xR, midY+8);
+    ctx.moveTo(x20, midY-8); ctx.lineTo(x20, midY+8);
+    ctx.stroke();
+    ctx.restore();
+
+    drawLabel(clamp((xR+x20)/2 - 10, left+6, right-60), midY-14, `K`, cK);
+
+    // guía 20 mm (muy tenue, para no ensuciar)
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,214,10,.18)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,7]);
+    ctx.beginPath();
+    ctx.moveTo(left, y20Top);
+    ctx.lineTo(right, y20Top);
+    ctx.moveTo(left, y20Bot);
+    ctx.lineTo(right, y20Bot);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // --- α (ángulo): lo dibujamos cerca del tramo inicial (entre R y R+K)
+  // No calculamos tangente exacta; representamos el ángulo usando el valor de α.
+  // Triángulo pequeño con base 6 min, altura según tan(alpha)
+  const baseMin = 6;
+  const xA0 = xR + 6; // un poquito a la derecha de R
+  const xA1 = left + (p.R + baseMin) * xScale;
+  const basePx = Math.max(20, xA1 - xA0);
+  const rad = (p.A * Math.PI) / 180;
+  const risePx = clamp(Math.tan(rad) * basePx * 0.15, 8, 38);
+
+  ctx.save();
+  ctx.strokeStyle = cA;
+  ctx.lineWidth = 1.4;
+  // línea base
+  ctx.beginPath();
+  ctx.moveTo(xA0, midY);
+  ctx.lineTo(xA0 + basePx, midY);
+  ctx.stroke();
+  // línea inclinada
+  ctx.beginPath();
+  ctx.moveTo(xA0, midY);
+  ctx.lineTo(xA0 + basePx, midY - risePx);
+  ctx.stroke();
+  ctx.restore();
+
+  drawLabel(clamp(xA0 + basePx + 6, left+6, right-80), midY - risePx, `α`, cA);
+
+  // --- MA (bracket vertical del ancho máximo)
+  const MA = p.MA;
+  const yMAu = midY - (MA * yScale);
+  const yMAd = midY + (MA * yScale);
+
+  // Elegimos x del MA cerca donde se estabiliza (tMA aprox, misma lógica que halfWidthAt)
+  const slope = clamp((p.A - 30)/50, 0.20, 1.00);
+  const tMA = p.R + p.K + lerp(8, 14, (1 - slope));
+  const xMA = left + clamp(tMA, 0, curve.maxMin) * xScale;
+
+  ctx.save();
+  ctx.strokeStyle = cMA;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(xMA, yMAu);
+  ctx.lineTo(xMA, yMAd);
+  ctx.stroke();
+  // “tics” horizontales (llave simple)
+  ctx.beginPath();
+  ctx.moveTo(xMA-8, yMAu); ctx.lineTo(xMA+8, yMAu);
+  ctx.moveTo(xMA-8, yMAd); ctx.lineTo(xMA+8, yMAd);
+  ctx.stroke();
+  ctx.restore();
+
+  drawLabel(clamp(xMA+10, left+6, right-80), midY, `MA`, cMA);
+
+  // --- LY30 (medición a 30 min post tMA)
+  const tLY = tMA + 30;
+  if(tLY <= curve.maxMin){
+    const xLY = left + tLY * xScale;
+    ctx.save();
+    ctx.strokeStyle = cLY;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([5,6]);
+    ctx.beginPath();
+    ctx.moveTo(xLY, top);
+    ctx.lineTo(xLY, bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    drawLabel(clamp(xLY+6, left+6, right-80), top+34, `LY30`, cLY);
+  }
+}
+
 /* ---------- Render: banda TEG simétrica (realista) ---------- */
 function redraw(force=false){
   const w = canvas.getBoundingClientRect().width;
@@ -1010,6 +1190,7 @@ function redraw(force=false){
   }
   strokeEdge(-1); // superior
   strokeEdge(+1); // inferior
+	drawMarkers(w, h, teg);
 
   // texto pequeño, sin invadir
   ctx.save();
