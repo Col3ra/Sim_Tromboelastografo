@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Simulador ROTEM — Entrenamiento</title>
+  <title>Simulador ROTEM (Tromboelastometría Rotacional) — Entrenamiento</title>
   <style>
     :root{
       --bg:#0b0d10;
@@ -37,7 +37,7 @@
       height:100dvh;
       padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
       display:grid;
-      grid-template-columns: minmax(520px, 1.25fr) minmax(340px, .75fr);
+      grid-template-columns: minmax(520px, 1.35fr) minmax(340px, .65fr);
       gap: var(--gap);
     }
     @media (max-width: 980px){
@@ -56,7 +56,7 @@
 
     .left{
       display:grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr;
     }
     .topbar{
       display:flex;
@@ -98,116 +98,166 @@
     }
     .dot.pause{ background: var(--warn); box-shadow:0 0 0 3px rgba(255,214,10,.12); }
     .dot.stop{ background: var(--danger); box-shadow:0 0 0 3px rgba(255,59,48,.12); }
+    .kbd{
+      padding: 4px 8px;
+      border:1px solid rgba(255,255,255,.12);
+      border-bottom-color: rgba(255,255,255,.18);
+      background: rgba(0,0,0,.22);
+      border-radius: 10px;
+      font-size: 11px;
+      color: rgba(233,241,255,.80);
+    }
 
-    .canvasWrap{
-      position:relative;
-      background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.35));
+    /* === ROTEM GRID === */
+    .rotemGridWrap{
       padding: 12px;
+      background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.35));
+      min-height:0;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .rotemGrid{
+      flex:1;
+      min-height:0;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 980px){
+      .rotemGrid{ grid-template-columns: 1fr; grid-template-rows: auto; }
+    }
+
+    .rotemCell{
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      overflow:hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.18));
+      display:grid;
+      grid-template-rows: 1fr auto;
       min-height:0;
     }
-    canvas{
+    .rotemCanvasWrap{
+      position:relative;
+      padding: 10px;
+      min-height:0;
+    }
+    .rotemCanvas{
       width:100%;
       height:100%;
       display:block;
-      border-radius: 14px;
+      border-radius: 12px;
       background:
-        radial-gradient(900px 400px at 50% 0%, rgba(89,183,255,.10), rgba(0,0,0,0) 60%),
+        radial-gradient(900px 380px at 50% 0%, rgba(89,183,255,.08), rgba(0,0,0,0) 62%),
         linear-gradient(180deg, rgba(12,16,22,.88), rgba(9,12,16,.94));
       border:1px solid rgba(255,255,255,.07);
     }
-
-    .overlayLegend{
+    .cornerTag{
       position:absolute;
-      left: 22px;
-      top: 18px;
+      left: 18px;
+      top: 16px;
       display:flex;
-      gap:10px;
-      flex-wrap:wrap;
+      align-items:center;
+      gap:8px;
       pointer-events:none;
-      opacity:.95;
-    }
-    .tag{
-      display:flex; align-items:center; gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
+      user-select:none;
+      opacity:.96;
+      padding: 6px 10px;
+      border-radius: 999px;
       background: rgba(0,0,0,.28);
       border:1px solid rgba(255,255,255,.10);
       font-size: 12px;
       color: var(--muted);
       white-space:nowrap;
+      max-width: calc(100% - 36px);
     }
     .swatch{
       width:10px;height:10px;border-radius:3px;
       background: var(--accent);
       box-shadow:0 0 0 3px rgba(89,183,255,.12);
+      flex:0 0 auto;
+    }
+    .cornerTag span:last-child{
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
-    .metrics{
-      padding: 10px 12px 12px;
-      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+    .rotemTable{
       border-top:1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.22);
+      padding: 0;
+    }
+    .chHeader{
+      display:grid;
+      grid-template-columns: 140px 1fr;
+      gap: 0;
+      align-items:stretch;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    .chLabel{
+      padding: 8px 10px;
+      font-weight: 800;
+      letter-spacing:.3px;
+      font-size: 12px;
+      text-transform:uppercase;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: rgba(255,255,255,.95);
+      border-right: 1px solid rgba(255,255,255,.10);
+      user-select:none;
+    }
+    .chMeta{
+      padding: 8px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      color: rgba(233,241,255,.78);
+      font-size: 12px;
+      white-space:nowrap;
+      overflow:hidden;
+    }
+    .chMeta .small{
+      color: var(--muted);
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .rowMetrics{
       display:grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 10px;
+      gap: 0;
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
-    @media (max-width: 980px){
-      .metrics{ grid-template-columns: repeat(3, 1fr); }
-    }
-    .metric{
-      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.18));
-      border:1px solid rgba(255,255,255,.08);
-      border-radius: 14px;
-      padding: 10px 10px 9px;
+    .rowMetrics:last-child{ border-bottom:0; }
+    .cellM{
+      padding: 8px 10px;
+      border-right: 1px solid rgba(255,255,255,.08);
       min-width:0;
     }
-    .mTop{
-      display:flex; justify-content:space-between; align-items:center;
-      gap:8px;
-    }
-    .mLabel{
+    .rowMetrics .cellM:last-child{ border-right:0; }
+    .k{
       color: var(--muted);
-      font-size: 12px;
-      letter-spacing:.2px;
-      white-space:nowrap;
-    }
-    .mRange{
-      color: rgba(233,241,255,.75);
       font-size: 11px;
-      white-space:nowrap;
-      opacity:.9;
-    }
-    .mVal{
-      margin-top: 6px;
-      font-weight: 800;
-      font-size: clamp(18px, 2.4vw, 26px);
-      line-height:1.05;
-      letter-spacing:.2px;
+      display:block;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
-    .mHint{
+    .v{
       margin-top: 4px;
-      font-size: 11px;
-      color: var(--muted);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+      color: rgba(233,241,255,.92);
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      opacity:.9;
     }
-    .badge{
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(0,0,0,.2);
-      color: rgba(233,241,255,.85);
-      white-space:nowrap;
-    }
-    .badge.ok{ border-color: rgba(52,199,89,.35); color: rgba(52,199,89,.95); }
-    .badge.warn{ border-color: rgba(255,214,10,.35); color: rgba(255,214,10,.95); }
-    .badge.danger{ border-color: rgba(255,59,48,.35); color: rgba(255,59,48,.95); }
 
+    /* RIGHT PANEL */
     .right{
       display:grid;
       grid-template-rows: auto 1fr auto;
@@ -231,7 +281,6 @@
       font-size: 12px;
       white-space:nowrap;
     }
-
     .panelBody{
       padding: 12px;
       overflow:auto;
@@ -331,7 +380,7 @@
 
     .sliderLine{ display:flex; align-items:center; gap:10px; }
     .sliderLine .val{
-      width:56px;
+      width:72px;
       text-align:right;
       color: rgba(233,241,255,.86);
       font-variant-numeric: tabular-nums;
@@ -363,15 +412,6 @@
       flex-wrap:wrap;
     }
     .mini{ color: var(--muted); font-size: 12px; white-space:nowrap; }
-    .kbd{
-      padding: 4px 8px;
-      border:1px solid rgba(255,255,255,.12);
-      border-bottom-color: rgba(255,255,255,.18);
-      background: rgba(0,0,0,.22);
-      border-radius: 10px;
-      font-size: 11px;
-      color: rgba(233,241,255,.80);
-    }
   </style>
 </head>
 
@@ -382,7 +422,7 @@
     <div class="topbar">
       <div class="brand">
         <div class="title">ROTEM • Simulador</div>
-        <div class="subtitle">Curva + parámetros para decisiones en quirófano simulado</div>
+        <div class="subtitle">EXTEM/INTEM/FIBTEM/APTEM en simultáneo + parámetros para decisiones</div>
       </div>
       <div class="statusPill" id="statusPill">
         <span class="dot" id="statusDot"></span>
@@ -391,15 +431,151 @@
       </div>
     </div>
 
-    <div class="canvasWrap">
-      <canvas id="tegCanvas"></canvas>
-      <div class="overlayLegend">
-        <div class="tag"><span class="swatch" id="assaySwatch"></span> Traza ROTEM (simétrica)</div>
-        <div class="tag" id="scenarioTag">Escenario: Normal • EXTEM</div>
+    <div class="rotemGridWrap">
+      <div class="rotemGrid" id="rotemGrid">
+
+        <!-- EXTEM -->
+        <div class="rotemCell" data-ch="EXTEM">
+          <div class="rotemCellTop rotemCanvasWrap">
+            <canvas class="rotemCanvas" id="cv_EXTEM"></canvas>
+            <div class="cornerTag">
+              <span class="swatch" id="sw_EXTEM"></span>
+              <span id="tag_EXTEM">EXTEM</span>
+            </div>
+          </div>
+          <div class="rotemTable">
+            <div class="chHeader">
+              <div class="chLabel" id="lab_EXTEM">EXTEM</div>
+              <div class="chMeta">
+                <span class="small" id="note_EXTEM">Vía extrínseca</span>
+                <span id="time_EXTEM">—</span>
+              </div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">CT</span><span class="v" id="m_EXTEM_CT">—</span></div>
+              <div class="cellM"><span class="k">CFT</span><span class="v" id="m_EXTEM_CFT">—</span></div>
+              <div class="cellM"><span class="k">A5</span><span class="v" id="m_EXTEM_A5">—</span></div>
+              <div class="cellM"><span class="k">A10</span><span class="v" id="m_EXTEM_A10">—</span></div>
+              <div class="cellM"><span class="k">MCF</span><span class="v" id="m_EXTEM_MCF">—</span></div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">A20</span><span class="v" id="m_EXTEM_A20">—</span></div>
+              <div class="cellM"><span class="k">A30</span><span class="v" id="m_EXTEM_A30">—</span></div>
+              <div class="cellM"><span class="k">A60</span><span class="v" id="m_EXTEM_A60">—</span></div>
+              <div class="cellM"><span class="k">ML</span><span class="v" id="m_EXTEM_ML">—</span></div>
+              <div class="cellM"><span class="k">Reactivo</span><span class="v" id="m_EXTEM_REAG">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INTEM -->
+        <div class="rotemCell" data-ch="INTEM">
+          <div class="rotemCellTop rotemCanvasWrap">
+            <canvas class="rotemCanvas" id="cv_INTEM"></canvas>
+            <div class="cornerTag">
+              <span class="swatch" id="sw_INTEM"></span>
+              <span id="tag_INTEM">INTEM</span>
+            </div>
+          </div>
+          <div class="rotemTable">
+            <div class="chHeader">
+              <div class="chLabel" id="lab_INTEM">INTEM</div>
+              <div class="chMeta">
+                <span class="small" id="note_INTEM">Vía intrínseca (sensible a heparina)</span>
+                <span id="time_INTEM">—</span>
+              </div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">CT</span><span class="v" id="m_INTEM_CT">—</span></div>
+              <div class="cellM"><span class="k">CFT</span><span class="v" id="m_INTEM_CFT">—</span></div>
+              <div class="cellM"><span class="k">A5</span><span class="v" id="m_INTEM_A5">—</span></div>
+              <div class="cellM"><span class="k">A10</span><span class="v" id="m_INTEM_A10">—</span></div>
+              <div class="cellM"><span class="k">MCF</span><span class="v" id="m_INTEM_MCF">—</span></div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">A20</span><span class="v" id="m_INTEM_A20">—</span></div>
+              <div class="cellM"><span class="k">A30</span><span class="v" id="m_INTEM_A30">—</span></div>
+              <div class="cellM"><span class="k">A60</span><span class="v" id="m_INTEM_A60">—</span></div>
+              <div class="cellM"><span class="k">ML</span><span class="v" id="m_INTEM_ML">—</span></div>
+              <div class="cellM"><span class="k">Reactivo</span><span class="v" id="m_INTEM_REAG">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIBTEM -->
+        <div class="rotemCell" data-ch="FIBTEM">
+          <div class="rotemCellTop rotemCanvasWrap">
+            <canvas class="rotemCanvas" id="cv_FIBTEM"></canvas>
+            <div class="cornerTag">
+              <span class="swatch" id="sw_FIBTEM"></span>
+              <span id="tag_FIBTEM">FIBTEM</span>
+            </div>
+          </div>
+          <div class="rotemTable">
+            <div class="chHeader">
+              <div class="chLabel" id="lab_FIBTEM">FIBTEM</div>
+              <div class="chMeta">
+                <span class="small" id="note_FIBTEM">Aísla componente de fibrina (plaquetas “bloqueadas”)</span>
+                <span id="time_FIBTEM">—</span>
+              </div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">CT</span><span class="v" id="m_FIBTEM_CT">—</span></div>
+              <div class="cellM"><span class="k">CFT</span><span class="v" id="m_FIBTEM_CFT">—</span></div>
+              <div class="cellM"><span class="k">A5</span><span class="v" id="m_FIBTEM_A5">—</span></div>
+              <div class="cellM"><span class="k">A10</span><span class="v" id="m_FIBTEM_A10">—</span></div>
+              <div class="cellM"><span class="k">MCF</span><span class="v" id="m_FIBTEM_MCF">—</span></div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">A20</span><span class="v" id="m_FIBTEM_A20">—</span></div>
+              <div class="cellM"><span class="k">A30</span><span class="v" id="m_FIBTEM_A30">—</span></div>
+              <div class="cellM"><span class="k">A60</span><span class="v" id="m_FIBTEM_A60">—</span></div>
+              <div class="cellM"><span class="k">ML</span><span class="v" id="m_FIBTEM_ML">—</span></div>
+              <div class="cellM"><span class="k">Reactivo</span><span class="v" id="m_FIBTEM_REAG">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- APTEM -->
+        <div class="rotemCell" data-ch="APTEM">
+          <div class="rotemCellTop rotemCanvasWrap">
+            <canvas class="rotemCanvas" id="cv_APTEM"></canvas>
+            <div class="cornerTag">
+              <span class="swatch" id="sw_APTEM"></span>
+              <span id="tag_APTEM">APTEM</span>
+            </div>
+          </div>
+          <div class="rotemTable">
+            <div class="chHeader">
+              <div class="chLabel" id="lab_APTEM">APTEM</div>
+              <div class="chMeta">
+                <span class="small" id="note_APTEM">Inhibe fibrinólisis (confirmatorio)</span>
+                <span id="time_APTEM">—</span>
+              </div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">CT</span><span class="v" id="m_APTEM_CT">—</span></div>
+              <div class="cellM"><span class="k">CFT</span><span class="v" id="m_APTEM_CFT">—</span></div>
+              <div class="cellM"><span class="k">A5</span><span class="v" id="m_APTEM_A5">—</span></div>
+              <div class="cellM"><span class="k">A10</span><span class="v" id="m_APTEM_A10">—</span></div>
+              <div class="cellM"><span class="k">MCF</span><span class="v" id="m_APTEM_MCF">—</span></div>
+            </div>
+            <div class="rowMetrics">
+              <div class="cellM"><span class="k">A20</span><span class="v" id="m_APTEM_A20">—</span></div>
+              <div class="cellM"><span class="k">A30</span><span class="v" id="m_APTEM_A30">—</span></div>
+              <div class="cellM"><span class="k">A60</span><span class="v" id="m_APTEM_A60">—</span></div>
+              <div class="cellM"><span class="k">ML</span><span class="v" id="m_APTEM_ML">—</span></div>
+              <div class="cellM"><span class="k">Reactivo</span><span class="v" id="m_APTEM_REAG">—</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div class="mini">Vista 2×2 (como equipo real). Podés alternar APTEM ↔ HEPTEM desde el panel derecho.</div>
+        <div class="mini" id="scenarioTag">Escenario: —</div>
       </div>
     </div>
-
-    <div class="metrics" id="metrics"></div>
   </div>
 
   <div class="right">
@@ -419,23 +595,19 @@
 
       <div class="section">
         <div class="sectionTitle">
-          <h3>Configuración</h3>
-          <small>escenario + ensayo</small>
+          <h3>Escenario</h3>
+          <small>preconfigurado</small>
         </div>
-        <div class="row3">
+        <div class="row">
           <div>
-            <label for="scenarioSelect">Escenario clínico</label>
+            <label for="scenarioSelect">Elegir escenario</label>
             <select id="scenarioSelect"></select>
-          </div>
-          <div>
-            <label for="assaySelect">Ensayo (ROTEM)</label>
-            <select id="assaySelect"></select>
           </div>
           <div>
             <label for="speedRange">Velocidad simulación</label>
             <div class="sliderLine">
-              <input id="speedRange" type="range" min="1" max="60" step="1" value="6" />
-              <div class="val" id="speedVal">×6</div>
+              <input id="speedRange" type="range" min="1" max="180" step="1" value="8" />
+              <div class="val" id="speedVal">×8</div>
             </div>
           </div>
         </div>
@@ -464,6 +636,24 @@
             </select>
           </div>
         </div>
+
+        <div style="margin-top:10px" class="row">
+          <div>
+            <label for="fourthChannelSelect">Canal 4 (abajo derecha)</label>
+            <select id="fourthChannelSelect">
+              <option value="APTEM" selected>APTEM</option>
+              <option value="HEPTEM">HEPTEM</option>
+            </select>
+          </div>
+          <div>
+            <label for="delayMode">Retardo de efecto</label>
+            <select id="delayMode">
+              <option value="real" selected>Realista</option>
+              <option value="fast">Rápido (demo)</option>
+            </select>
+          </div>
+        </div>
+
       </div>
 
       <div class="section" id="interventionsSection">
@@ -486,8 +676,8 @@
         <div style="height:10px"></div>
         <div class="row3">
           <button data-int="fluids">Fluidos (hemodilución)</button>
-          <button data-int="rbc">Concentrado GR</button>
           <button data-int="heparin">Heparina</button>
+          <button data-int="pcc">PCC (4F)</button>
         </div>
 
         <div style="margin-top:10px" class="row">
@@ -500,10 +690,11 @@
             </select>
           </div>
           <div>
-            <label for="delayMode">Retardo de efecto</label>
-            <select id="delayMode">
-              <option value="real" selected>Realista</option>
-              <option value="fast">Rápido (demo)</option>
+            <label for="timeWindowSelect">Ventana en pantalla</label>
+            <select id="timeWindowSelect">
+              <option value="45">45 min</option>
+              <option value="60" selected>60 min</option>
+              <option value="80">80 min</option>
             </select>
           </div>
         </div>
@@ -512,7 +703,7 @@
       <div class="section" id="advancedSection" style="display:none;">
         <div class="sectionTitle">
           <h3>Fisiología (avanzado)</h3>
-          <small>mueve y mira la curva</small>
+          <small>mueve y mira las curvas</small>
         </div>
 
         <div class="row">
@@ -543,7 +734,7 @@
             </div>
           </div>
           <div>
-            <label for="dilutionRange">Hemodilución (0–100%)</label>
+            <label for="dilutionRange">Hemodilución (0–70%)</label>
             <div class="sliderLine">
               <input id="dilutionRange" type="range" min="0" max="70" step="1" value="10" />
               <div class="val" id="dilutionVal">10%</div>
@@ -582,7 +773,7 @@
     </div>
 
     <div class="footerBar">
-      <div class="mini">Tips: <span class="kbd">Nuevo test</span> reinicia el tiempo. <span class="kbd">Pausar</span> congela curva.</div>
+      <div class="mini">Tips: <span class="kbd">Nuevo test</span> reinicia el tiempo. <span class="kbd">Pausar</span> congela curvas.</div>
       <div class="mini" id="hintLine">—</div>
     </div>
   </div>
@@ -591,12 +782,13 @@
 
 <script>
 /* =========================================================
-   Simulador ROTEM — Motor fisiológico + render simétrico realista
+   Simulador ROTEM — Motor fisiológico + 4 canales simultáneos
+   CT/CFT + A5/A10/A20/A30/A60 + MCF + ML
    ========================================================= */
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a,b,t)=> a+(b-a)*t;
-const fmt = (v, d=1)=> Number(v).toFixed(d);
+const fmt = (v, d=0)=> Number(v).toFixed(d);
 const now = ()=> performance.now();
 
 function mulberry32(seed){
@@ -617,73 +809,16 @@ function smoothNoise(rng, x){
   return lerp(a,b,t);
 }
 
-/* ---------- Escenarios ---------- */
-const SCENARIOS = [
-  { id:"normal", name:"Normal", note:"Coagulación normal (baseline).",
-    state:{ factors:0.95,fibrinogen:320,platelets:220,lysis:0.05,heparin:0.00,temp:36.6,ph:7.36,ca:1.05,dilution:0.10,txa:0.0 } },
-  { id:"hemodilution", name:"Hemodilución masiva", note:"Fluidos → dilución de factores/fib/plaquetas.",
-    state:{ factors:0.55,fibrinogen:180,platelets:95,lysis:0.08,heparin:0.00,temp:36.2,ph:7.33,ca:0.95,dilution:0.45,txa:0.0 } },
-  { id:"factor_def", name:"Déficit de factores (PFC requerido)", note:"CT prolongado, corrección con plasma.",
-    state:{ factors:0.35,fibrinogen:280,platelets:190,lysis:0.06,heparin:0.00,temp:36.5,ph:7.32,ca:1.00,dilution:0.20,txa:0.0 } },
-  { id:"thrombocytopenia", name:"Trombocitopenia / disfunción plaquetaria", note:"MCF bajo con CT relativamente normal.",
-    state:{ factors:0.80,fibrinogen:300,platelets:45,lysis:0.06,heparin:0.00,temp:36.7,ph:7.37,ca:1.05,dilution:0.15,txa:0.0 } },
-  { id:"hypofibrinogen", name:"Hipofibrinogenemia", note:"CFT prolongado, A10 bajo, MCF bajo; responde a crio/fibrinógeno.",
-    state:{ factors:0.80,fibrinogen:95,platelets:170,lysis:0.06,heparin:0.00,temp:36.4,ph:7.33,ca:1.00,dilution:0.25,txa:0.0 } },
-  { id:"hyperfibrinolysis", name:"Hiperfibrinólisis", note:"LI30 bajo; responde a TXA / APTEM.",
-    state:{ factors:0.85,fibrinogen:260,platelets:160,lysis:0.45,heparin:0.00,temp:36.3,ph:7.30,ca:0.98,dilution:0.25,txa:0.0 } },
-  { id:"heparin_effect", name:"Efecto heparina", note:"CT muy prolongado en INTEM; HEPTEM revierte.",
-    state:{ factors:0.85,fibrinogen:280,platelets:180,lysis:0.06,heparin:0.55,temp:36.5,ph:7.36,ca:1.02,dilution:0.15,txa:0.0 } },
-  { id:"trauma_coagulopathy", name:"Coagulopatía del trauma", note:"Mixta: factores↓, fib↓, plaquetas↓, acidosis/hipotermia, lisis↑.",
-    state:{ factors:0.40,fibrinogen:120,platelets:75,lysis:0.28,heparin:0.00,temp:34.2,ph:7.18,ca:0.85,dilution:0.35,txa:0.0 } },
-  { id:"post_cpb", name:"Post-CEC (cirugía cardíaca)", note:"Heparina residual + plaquetopatía + hemodilución.",
-    state:{ factors:0.55,fibrinogen:160,platelets:85,lysis:0.10,heparin:0.30,temp:35.8,ph:7.30,ca:0.90,dilution:0.40,txa:0.0 } },
-  { id:"pregnancy_hypercoag", name:"Embarazo (hipercoagulable)", note:"CT algo corto, MCF alto, lisis baja.",
-    state:{ factors:1.05,fibrinogen:480,platelets:240,lysis:0.02,heparin:0.00,temp:36.8,ph:7.40,ca:1.10,dilution:0.08,txa:0.0 } }
-];
-
-/* ---------- Ensayos ROTEM ---------- */
-const ASSAYS = [
-  { id:"EXTEM", name:"EXTEM", color:"rgba(89,183,255,.95)",  note:"Activación extrínseca (TF).",
-    apply:(s)=> ({...s, assay:{ ctMult:0.82, lysisMult:1.00, heparinNeutral:false, fibOnly:false }})
-  },
-  { id:"INTEM", name:"INTEM", color:"rgba(52,199,89,.95)",   note:"Activación intrínseca.",
-    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:1.00, heparinNeutral:false, fibOnly:false }})
-  },
-  { id:"FIBTEM", name:"FIBTEM", color:"rgba(255,214,10,.95)", note:"Inhibición plaquetaria → mide fibrina/fibrinógeno.",
-    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:1.00, heparinNeutral:false, fibOnly:true }})
-  },
-  { id:"APTEM", name:"APTEM", color:"rgba(255,59,48,.92)",   note:"Antifibrinolítico → descarta hiperfibrinólisis.",
-    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:0.25, heparinNeutral:false, fibOnly:false }})
-  },
-  { id:"HEPTEM", name:"HEPTEM", color:"rgba(160,120,255,.95)", note:"Heparinasa → neutraliza heparina.",
-    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:1.00, heparinNeutral:true, fibOnly:false }})
-  },
-];
-
-let currentAssayId = "EXTEM";
-function getAssay(){ return ASSAYS.find(a=>a.id===currentAssayId) || ASSAYS[0]; }
-
-/* ---------- Rango/interpretación (orientativo) ---------- */
-const REF = {
-  CT:  {min:40,  max:100, unit:"s",  hint:"Inicio coagulación (2 mm)"},
-  CFT: {min:40,  max:160, unit:"s",  hint:"Formación coágulo (2→20 mm)"},
-  A10: {min:35,  max:65,  unit:"mm", hint:"Amplitud a 10 min"},
-  MCF: {min:50,  max:72,  unit:"mm", hint:"Fuerza máxima coágulo"},
-  LI30:{min:92,  max:100, unit:"%",  hint:"Índice lisis 30 min (alto=mejor)"}
-};
-
 const el = (id)=> document.getElementById(id);
-const canvas = el("tegCanvas");
-const ctx = canvas.getContext("2d");
 
+/* ====== UI refs ====== */
 const scenarioSelect = el("scenarioSelect");
-const assaySelect = el("assaySelect");
 const scenarioTag = el("scenarioTag");
-const assaySwatch = el("assaySwatch");
-
 const speedRange = el("speedRange");
 const speedVal = el("speedVal");
 const helpSelect = el("helpSelect");
+const fourthChannelSelect = el("fourthChannelSelect");
+const timeWindowSelect = el("timeWindowSelect");
 
 const btnNew = el("btnNew");
 const btnPause = el("btnPause");
@@ -709,7 +844,38 @@ const dilutionRange = el("dilutionRange"), dilutionVal = el("dilutionVal");
 const heparinRange = el("heparinRange"), heparinVal = el("heparinVal");
 const lysisRange = el("lysisRange"), lysisVal = el("lysisVal");
 
-/* ---------- Estado ---------- */
+/* ====== Channels definition ====== */
+const CHANNEL_STYLE = {
+  EXTEM: { color:"#ff3b30", fill:"rgba(255,59,48,.18)", edge:"rgba(240,246,255,.92)", reagent:"EXTEM", note:"Vía extrínseca" },
+  INTEM: { color:"#4c8dff", fill:"rgba(76,141,255,.18)", edge:"rgba(240,246,255,.92)", reagent:"INTEM", note:"Vía intrínseca (sensible a heparina)" },
+  FIBTEM:{ color:"#ff9f0a", fill:"rgba(255,159,10,.18)", edge:"rgba(240,246,255,.92)", reagent:"FIBTEM", note:"Fibrina (plaquetas bloqueadas)" },
+  APTEM: { color:"#bf5af2", fill:"rgba(191,90,242,.18)", edge:"rgba(240,246,255,.92)", reagent:"APTEM", note:"Inhibe fibrinólisis" },
+  HEPTEM:{ color:"#34c759", fill:"rgba(52,199,89,.18)", edge:"rgba(240,246,255,.92)", reagent:"HEPTEM", note:"Neutraliza heparina (comparar con INTEM)" },
+};
+
+/* ====== Escenarios (estado del paciente) ====== */
+const SCENARIOS = [
+  { id:"normal", name:"Normal", note:"ROTEM compatible con hemostasia adecuada.",
+    state:{ factors:0.95,fibrinogen:320,platelets:220,lysis:0.05,heparin:0.00,temp:36.6,ph:7.36,ca:1.05,dilution:0.10,txa:0.0 } },
+  { id:"factor_def", name:"Déficit de factores (CT prolongado)", note:"CT prolongado; responde a PFC/PCC.",
+    state:{ factors:0.35,fibrinogen:280,platelets:190,lysis:0.06,heparin:0.00,temp:36.5,ph:7.32,ca:1.00,dilution:0.20,txa:0.0 } },
+  { id:"thrombocytopenia", name:"Trombocitopenia / disfunción plaquetaria", note:"A5/A10/MCF bajos en EXTEM; FIBTEM relativamente menos afectado.",
+    state:{ factors:0.80,fibrinogen:300,platelets:45,lysis:0.06,heparin:0.00,temp:36.7,ph:7.37,ca:1.05,dilution:0.15,txa:0.0 } },
+  { id:"hypofibrinogen", name:"Hipofibrinogenemia", note:"FIBTEM claramente bajo; responde a crio/fibrinógeno.",
+    state:{ factors:0.80,fibrinogen:95,platelets:170,lysis:0.06,heparin:0.00,temp:36.4,ph:7.33,ca:1.00,dilution:0.25,txa:0.0 } },
+  { id:"hyperfibrinolysis", name:"Hiperfibrinólisis", note:"ML alto / A60 cae; APTEM confirma corrección.",
+    state:{ factors:0.85,fibrinogen:260,platelets:160,lysis:0.55,heparin:0.00,temp:36.3,ph:7.30,ca:0.98,dilution:0.25,txa:0.0 } },
+  { id:"heparin_effect", name:"Efecto heparina", note:"CT muy prolongado en INTEM; HEPTEM revierte.",
+    state:{ factors:0.85,fibrinogen:280,platelets:180,lysis:0.06,heparin:0.65,temp:36.5,ph:7.36,ca:1.02,dilution:0.15,txa:0.0 } },
+  { id:"hemodilution", name:"Hemodilución masiva", note:"Todo cae (factores/fib/plaquetas) por dilución.",
+    state:{ factors:0.55,fibrinogen:180,platelets:95,lysis:0.08,heparin:0.00,temp:36.2,ph:7.33,ca:0.95,dilution:0.45,txa:0.0 } },
+  { id:"trauma", name:"Coagulopatía del trauma (mixta)", note:"Factores↓, fib↓, plaquetas↓, hipotermia/acidosis, lisis↑.",
+    state:{ factors:0.40,fibrinogen:120,platelets:75,lysis:0.30,heparin:0.00,temp:34.2,ph:7.18,ca:0.85,dilution:0.35,txa:0.0 } },
+  { id:"hypercoag", name:"Hipercoagulable", note:"CT/CFT más cortos, amplitudes altas, lisis baja.",
+    state:{ factors:1.05,fibrinogen:520,platelets:270,lysis:0.02,heparin:0.00,temp:36.8,ph:7.41,ca:1.12,dilution:0.05,txa:0.0 } },
+];
+
+/* ====== Estado global ====== */
 let running = true;
 let simSpeed = Number(speedRange.value);
 let tMin = 0;
@@ -720,217 +886,309 @@ let noiseSeed = mulberry32(987654);
 let state = null;
 let pendingEvents = [];
 
-// “parámetros internos” (mantengo p.R p.K p.A p.MA p.LY30 como motor)
-// luego derivamos CT/CFT/Ax/MCF/LI30 para UI
-let teg = {R:6, K:2, A:60, MA:60, LY30:2, CI:0};
-let rotem = { CTs:60, CFTs:80, A5:20, A10:40, A20:60, A30:65, A60:65, MCF:60, LI30:98, tCT:1.0 };
-
-const curve = {
-  maxMin: 60,
-  samples: [],   // {t, ampHalf} half-width en mm
-  lastSampleMin: 0
+const view = {
+  maxMin: 60, // ajustable por selector
 };
 
-/* ---------- Métricas UI ---------- */
-const METRIC_ORDER = [
-  {key:"CT",  label:"CT",  range:"40–100 s"},
-  {key:"CFT", label:"CFT", range:"40–160 s"},
-  {key:"A10", label:"A10", range:"35–65 mm"},
-  {key:"MCF", label:"MCF", range:"50–72 mm"},
-  {key:"LI30",label:"LI30",range:"92–100 %"},
-];
-
-function badgeFor(key, value){
-  const r = REF[key];
-  if(!r || value==null || Number.isNaN(value)) return {cls:"warn", text:"—"};
-  if(value < r.min) return {cls:"warn", text:"Bajo"};
-  if(value > r.max) return {cls:"warn", text:"Alto"};
-  return {cls:"ok", text:"Normal"};
-}
-function buildMetrics(){
-  const host = el("metrics");
-  host.innerHTML = "";
-  for(const m of METRIC_ORDER){
-    const card = document.createElement("div");
-    card.className = "metric";
-    card.innerHTML = `
-      <div class="mTop">
-        <div class="mLabel">${m.label}</div>
-        <div class="mRange">${m.range}</div>
-      </div>
-      <div class="mVal" id="m_${m.key}">—</div>
-      <div class="mTop" style="margin-top:6px">
-        <div class="mHint">${REF[m.key].hint}</div>
-        <div class="badge" id="b_${m.key}">—</div>
-      </div>
-    `;
-    host.appendChild(card);
-  }
-}
-buildMetrics();
-
+function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
 function log(msg){
   const ts = fmt(tMin,1).padStart(5," ");
   logEl.textContent = `[${ts} min] ${msg}\n` + logEl.textContent;
 }
-log("Simulador listo (ROTEM).");
+log("Simulador listo (ROTEM 4 canales).");
 
-/* ---------- Motor fisiológico -> parámetros internos ---------- */
-function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
+/* ====== Canal 4: APTEM / HEPTEM ====== */
+const SLOT_MAP_DEFAULT = ["EXTEM","INTEM","FIBTEM","APTEM"]; // 2x2
+let slotMap = [...SLOT_MAP_DEFAULT]; // se actualiza si cambia 4to
 
-function computeTEGFromState(s){
-  const assay = getAssay();
-  const s2 = assay.apply(s);
-  const a = s2.assay || { ctMult:1.0, lysisMult:1.0, heparinNeutral:false, fibOnly:false };
-
-  const dil = clamp(s2.dilution, 0, 0.70);
-  const effFactors = clamp(s2.factors * (1 - 0.85*dil), 0.05, 1.25);
-  const effFib     = clamp(s2.fibrinogen * (1 - 0.80*dil), 30, 650);
-  const effPlt     = clamp(s2.platelets * (1 - 0.75*dil), 5, 350);
-
-  const tempPenalty = clamp((36.5 - s2.temp) * 0.10, -0.2, 0.9);
-  const phPenalty   = clamp((7.35 - s2.ph) * 1.8,  -0.2, 0.9);
-  const caPenalty   = clamp((1.05 - s2.ca) * 1.2,  -0.2, 0.9);
-
-  const hep = clamp(a.heparinNeutral ? 0 : s2.heparin, 0, 1);
-
-  // R interno (lo usaremos para CT derivado)
-  let R = 5.8;
-  R *= (1 + 2.4*(1 - effFactors));
-  R *= (1 + 3.2*hep);
-  R *= (1 + 0.55*tempPenalty + 0.55*phPenalty + 0.35*caPenalty);
-  R *= clamp(a.ctMult, 0.5, 1.2);
-  R = clamp(R, 1.2, 35.0);
-
-  const fibNorm = clamp((effFib - 80) / (450 - 80), 0, 1);
-  const factorNorm = clamp(effFactors, 0, 1.1) / 1.1;
-
-  let A = 44 + 34*(0.72*fibNorm + 0.28*factorNorm);
-  A -= 12*(tempPenalty + phPenalty)*0.35;
-  A = clamp(A, 25, 82);
-
-  let K = 4.2 - (A - 40)*0.055;
-  K *= (1 + 0.25*(1 - effFactors));
-  K = clamp(K, 0.6, 12.0);
-
-  const pltNorm = a.fibOnly ? 0.05 : clamp((effPlt - 30) / (250 - 30), 0, 1);
-  const fibForMA = clamp((effFib - 80) / (450 - 80), 0, 1);
-
-  let MA = 44 + 30*(0.62*pltNorm + 0.38*fibForMA);
-  if(dil > 0.35 && hep > 0.20) MA -= 5;
-  MA -= 8*(tempPenalty + phPenalty)*0.25;
-  MA = clamp(MA, 18, 80);
-
-  const baseLysis = clamp(s2.lysis, 0, 1);
-  const txa = clamp(s2.txa, 0, 1);
-  const lysisEff = clamp(baseLysis * clamp(a.lysisMult, 0.1, 1.3) * (1 - 0.75*txa), 0, 1);
-
-  let LY30 = 1.5 + 70*lysisEff*lysisEff;
-  LY30 = clamp(LY30, 0, 70);
-
-  const CI = clamp(
-    ( (7 - R) * 0.25 ) + ( (65 - K*10) * 0.01 ) + ( (A - 60) * 0.05 ) + ( (MA - 60) * 0.06 ) - (LY30 * 0.02 ),
-    -6, 6
-  );
-
-  return {R, K, A, MA, LY30, CI};
+function applyFourthChannel(){
+  slotMap[3] = fourthChannelSelect.value;
+  // actualizar etiquetas y notas visuales (sin romper la grilla)
+  const ch = slotMap[3];
+  el("tag_APTEM").textContent = ch; // el tag se llama así por el slot, no por el canal
+  el("lab_APTEM").textContent = ch;
+  el("note_APTEM").textContent = CHANNEL_STYLE[ch].note;
+  // swatch del slot 4
+  el("sw_APTEM").style.background = CHANNEL_STYLE[ch].color;
+  el("sw_APTEM").style.boxShadow = `0 0 0 3px ${hexToRgba(CHANNEL_STYLE[ch].color, .18)}`;
+  // canvas id del slot 4 se mantiene (cv_APTEM), pero lo dibujamos con "ch"
 }
 
-/* ---------- Curva (half-width mm) ---------- */
-function halfWidthAt(t, p){
-  const R = p.R, K = p.K, MA = p.MA, alpha = p.A, LY30 = p.LY30;
-  if(t <= R) return 0;
+/* ====== Visual: set channel colors for labels/swatches ====== */
+function hexToRgba(hex, a){
+  const h = hex.replace("#","").trim();
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function applyChannelStyles(){
+  // Slots fijos: EXTEM, INTEM, FIBTEM (slot 4 se actualiza aparte)
+  const fixed = ["EXTEM","INTEM","FIBTEM"];
+  for(const ch of fixed){
+    el(`sw_${ch}`).style.background = CHANNEL_STYLE[ch].color;
+    el(`sw_${ch}`).style.boxShadow = `0 0 0 3px ${hexToRgba(CHANNEL_STYLE[ch].color,.18)}`;
+    el(`lab_${ch}`).style.background = hexToRgba(CHANNEL_STYLE[ch].color,.85);
+    el(`tag_${ch}`).textContent = ch;
+    el(`note_${ch}`).textContent = CHANNEL_STYLE[ch].note;
+  }
+  // Slot 4:
+  el(`lab_APTEM`).style.background = hexToRgba(CHANNEL_STYLE[slotMap[3]].color,.85);
+  el(`lab_EXTEM`).style.background = hexToRgba(CHANNEL_STYLE.EXTEM.color,.85);
+  el(`lab_INTEM`).style.background = hexToRgba(CHANNEL_STYLE.INTEM.color,.85);
+  el(`lab_FIBTEM`).style.background = hexToRgba(CHANNEL_STYLE.FIBTEM.color,.85);
+  applyFourthChannel();
+}
+applyChannelStyles();
 
-  const micro = clamp((t - R) * 1.6, 0, 2.0);
-  const slope = clamp((alpha - 30) / 50, 0.20, 1.00);
+/* =========================================================
+   Motor ROTEM: derivar CT/CFT/MCF + curva amplitud(t)
+   ========================================================= */
 
-  const tK = R + Math.max(0.2, K);
-  const mid = R + 0.55 * (tK - R);
-  const sharp = lerp(0.35, 0.90, slope);
+/**
+ * Construye parámetros “plausibles” de ROTEM por canal.
+ * Nota: esto es un modelo didáctico (no clínico) diseñado para:
+ * - que las relaciones sean realistas (heparina vs HEPTEM, lisis vs APTEM, FIBTEM vs fibrinógeno)
+ * - que intervenciones cambien la curva de forma visible y coherente
+ */
+function computeROTEMParams(channel, s){
+  // Dilución efectiva
+  const dil = clamp(s.dilution, 0, 0.70);
 
-  const z = (t - mid) / Math.max(0.001, (tK - R)) * sharp;
-  let w = MA / (1 + Math.exp(-z));
+  // Efectivos (dilución afecta todo)
+  const effFactors = clamp(s.factors * (1 - 0.85*dil), 0.05, 1.35);
+  const effFib     = clamp(s.fibrinogen * (1 - 0.80*dil), 30, 750);
+  const effPlt     = clamp(s.platelets * (1 - 0.75*dil), 5, 420);
 
-  const u = clamp((t - R) / Math.max(0.001, (tK - R)), 0, 1);
+  // Penalizaciones fisiológicas
+  const tempPenalty = clamp((36.5 - s.temp) * 0.10, -0.2, 1.1);
+  const phPenalty   = clamp((7.35 - s.ph) * 1.8,  -0.2, 1.1);
+  const caPenalty   = clamp((1.05 - s.ca) * 1.2,  -0.2, 1.1);
+
+  // Heparina canal-dependiente
+  const hep = clamp(s.heparin, 0, 1);
+  const heparinSensitivity = (channel === "INTEM") ? 1.25 : (channel === "EXTEM" ? 0.55 : 0.70);
+  const heptemNeutralizer = (channel === "HEPTEM") ? 0.85 : 0.0; // “neutraliza” gran parte
+  const hepEff = clamp(hep * (1 - heptemNeutralizer), 0, 1);
+
+  // Fibrinólisis canal-dependiente
+  const baseLysis = clamp(s.lysis, 0, 1);
+  const txa = clamp(s.txa, 0, 1);
+
+  // APTEM simula inhibición fuerte (independiente de TXA del paciente)
+  const aptemBlock = (channel === "APTEM") ? 0.90 : 0.0;
+  const lysisEff = clamp(baseLysis * (1 - 0.75*txa) * (1 - aptemBlock), 0, 1);
+
+  // Si es FIBTEM, “quita” plaquetas
+  const pltWeight = (channel === "FIBTEM") ? 0.05 : 0.62;
+  const fibWeight = (channel === "FIBTEM") ? 0.95 : 0.38;
+
+  // ===== CT (sec) =====
+  // Basales típicos (aprox) solo para sensación de equipo real:
+  const CTbase = (channel === "INTEM" || channel === "HEPTEM") ? 170 : 65;
+
+  let CT = CTbase;
+  CT *= (1 + 2.6*(1 - effFactors));                      // factores bajos -> CT sube
+  CT *= (1 + 2.8*hepEff*heparinSensitivity);             // heparina -> CT sube (más en INTEM)
+  CT *= (1 + 0.55*tempPenalty + 0.55*phPenalty + 0.35*caPenalty);
+  CT = clamp(CT, 25, 1800);
+
+  // ===== MCF (mm) =====
+  const fibNorm = clamp((effFib - 80) / (520 - 80), 0, 1);
+  const pltNorm = clamp((effPlt - 30) / (280 - 30), 0, 1);
+
+  // Para FIBTEM, el rango es menor (7–24mm típico). Para los otros, 45–75mm.
+  let MCF;
+  if(channel === "FIBTEM"){
+    MCF = 4 + 28*(fibNorm); // ~4..32
+  } else {
+    MCF = 40 + 38*(pltWeight*pltNorm + fibWeight*fibNorm); // ~40..78
+  }
+
+  // Ajustes por fisiología
+  MCF -= 7*(tempPenalty + phPenalty)*0.22;
+  if(dil > 0.35 && hepEff > 0.20) MCF -= 4;
+
+  // Clamps por canal
+  MCF = clamp(MCF, channel==="FIBTEM" ? 0 : 20, channel==="FIBTEM" ? 40 : 85);
+
+  // ===== CFT (sec) =====
+  // CFT más sensible a fibrinógeno/plaquetas (y algo a factores)
+  let CFT = 95;
+  if(channel === "INTEM" || channel === "HEPTEM") CFT = 110;
+  if(channel === "FIBTEM") CFT = 140;
+
+  // Menos amplitud/rigidez -> CFT mayor
+  const stiffness = clamp((MCF / (channel==="FIBTEM" ? 28 : 70)), 0.05, 1.4); // proxy
+  CFT *= (1.25 - 0.85*stiffness);
+
+  // factores bajos también empeoran
+  CFT *= (1 + 0.55*(1 - effFactors));
+  // fisiología
+  CFT *= (1 + 0.30*tempPenalty + 0.30*phPenalty + 0.18*caPenalty);
+  // heparina impacta un poco (más en INTEM)
+  CFT *= (1 + 0.35*hepEff*heparinSensitivity);
+
+  CFT = clamp(CFT, 25, 2000);
+
+  // ===== Segmentos “reactivo / acelerador” (solo visual, sutil) =====
+  // fase 1: “activación” hasta CT
+  // fase 2: “propagación” (CT -> CT+CFT)
+  // fase 3: “plateau” (hacia MCF)
+  const reagent = CHANNEL_STYLE[channel].reagent;
+
+  return {
+    channel,
+    CT, CFT, MCF,
+    lysisEff,
+    reagent,
+    // helpers
+    CTmin: CT/60,
+    CFTmin: CFT/60
+  };
+}
+
+/* Curva (half-width mm) para ROTEM: inicia en 0, luego crece tras CT */
+function halfWidthAt(tMin, p){
+  const CTm = p.CTmin;
+  const CFTm = p.CFTmin;
+  const MCF = p.MCF;
+
+  if(tMin <= CTm) return 0;
+
+  // “inicio” de crecimiento: desde CT hasta CT+CFT
+  // Usamos una sigmoide controlada por CFT (más corto => más empinado)
+  const growWindow = Math.max(0.6, CFTm); // min
+  const mid = CTm + 0.55*growWindow;
+  const sharp = clamp(0.65 + (1.6 / (growWindow + 0.6)), 0.85, 2.4 ()); // más corto => más pendiente
+
+  // Para evitar errores por typo: clamp manual sin () raro
+}
+
+/* ======= FIX: remove accidental () in clamp line, implement carefully ======= */
+function halfWidthAt(tMin, p){
+  const CTm = p.CTmin;
+  const CFTm = p.CFTmin;
+  const MCF = p.MCF;
+
+  if(tMin <= CTm) return 0;
+
+  const growWindow = Math.max(0.6, CFTm); // minutos para alcanzar ~20 mm (aprox conceptual)
+  const mid = CTm + 0.55*growWindow;
+  const sharp = clamp(0.65 + (1.6 / (growWindow + 0.6)), 0.85, 2.4); // más corto => más empinado
+
+  // Sigmoide hacia MCF
+  const z = (tMin - mid) / growWindow * sharp;
+  let w = MCF / (1 + Math.exp(-z));
+
+  // Gate para que arranque realmente en 0 al salir de CT
+  const u = clamp((tMin - CTm) / growWindow, 0, 1);
   const gate = u*u*(3-2*u);
   w *= gate;
 
-  const tMA = R + K + lerp(8, 14, (1 - slope));
-
-  if(t > tMA){
-    const settle = 1 - 0.02 * (1 - Math.exp(-(t - tMA) * 0.15));
+  // Platear suave (MCF se alcanza no instantáneo)
+  const tPlateau = CTm + growWindow + 8; // minutos después de CFT suele aplanar
+  if(tMin > tPlateau){
+    const settle = 1 - 0.015 * (1 - Math.exp(-(tMin - tPlateau) * 0.12));
     w *= settle;
   }
 
-  if(t > tMA){
-    const target = clamp(1 - LY30/100, 0.05, 1);
-    const rate = -Math.log(target) / 30.0;
-    const dt = (t - tMA);
+  // Lisis: hacemos que “ML” sea interpretable hacia 60 min desde inicio
+  // (aprox: caída exponencial posterior al plateau, según lysisEff)
+  const l = p.lysisEff; // 0..1
+  if(tMin > tPlateau && l > 0.001){
+    // a mayor lysisEff, más caída hacia 60min
+    const targetAt60 = clamp(1 - (0.10 + 0.90*l*l), 0.02, 1); // l=0 -> ~0.90..1; l alto -> cae mucho
+    const totalWindow = 60 - tPlateau;
+    const rate = -Math.log(targetAt60) / Math.max(5, totalWindow);
+    const dt = (tMin - tPlateau);
     w *= Math.exp(-rate * dt);
   }
 
-  return clamp(Math.max(w, micro), 0, 80);
+  return clamp(w, 0, 90);
 }
 
-/* ---------- Derivados ROTEM ---------- */
-function fullAmpAt(tMin, p){
-  return clamp(2 * halfWidthAt(tMin, p), 0, 160);
+/* Amplitudes A5..A60 (mm): en ROTEM se reportan típicamente como “A5 = amplitud 5 min después de CT”.
+   Aquí: A5 se calcula en t = CT + 5min, etc.
+*/
+function getAx(p, minutesAfterCT){
+  const t = p.CTmin + minutesAfterCT;
+  return halfWidthAt(t, p);
 }
-function tWhenFullAmpReaches(targetFullAmp, p){
-  const dt = 0.05;
-  const maxSearch = curve.maxMin;
-  for(let tt=0; tt<=maxSearch; tt+=dt){
-    if(fullAmpAt(tt, p) >= targetFullAmp) return tt;
-  }
-  return null;
+function getA60Abs(p){ // amplitud a los 60 min desde inicio del test
+  return halfWidthAt(60, p);
 }
-function computeROTEMDerived(p){
-  const tCT = tWhenFullAmpReaches(2, p);
-  const tA20 = tWhenFullAmpReaches(20, p);
-
-  const CTs  = tCT!=null ? tCT*60 : null;
-  const CFTs = (tCT!=null && tA20!=null) ? (tA20 - tCT)*60 : null;
-
-  const A5  = fullAmpAt(5, p);
-  const A10 = fullAmpAt(10, p);
-  const A20 = fullAmpAt(20, p);
-  const A30 = fullAmpAt(30, p);
-  const A60 = fullAmpAt(60, p);
-
-  const MCF = clamp(2*p.MA, 0, 160);
-  const LI30 = clamp(100 - p.LY30, 0, 100);
-
-  return { CTs, CFTs, A5, A10, A20, A30, A60, MCF, LI30, tCT };
+function getML(p){
+  const mcf = p.MCF;
+  if(mcf <= 0.1) return 0;
+  const a60 = getA60Abs(p);
+  const ml = clamp((mcf - a60) / mcf * 100, 0, 100);
+  return ml;
 }
 
-/* ---------- Canvas resize (optimizado para iPad) ---------- */
-function resizeCanvas(){
-  const rect = canvas.getBoundingClientRect();
+/* =========================================================
+   Rendering — 4 canvases sin superposiciones
+   ========================================================= */
+const CANVAS_IDS = {
+  EXTEM: "cv_EXTEM",
+  INTEM: "cv_INTEM",
+  FIBTEM:"cv_FIBTEM",
+  SLOT4: "cv_APTEM" // slot 4 (APTEM o HEPTEM)
+};
+const canvases = {
+  EXTEM: el(CANVAS_IDS.EXTEM),
+  INTEM: el(CANVAS_IDS.INTEM),
+  FIBTEM: el(CANVAS_IDS.FIBTEM),
+  SLOT4: el(CANVAS_IDS.SLOT4),
+};
+const ctxs = {
+  EXTEM: canvases.EXTEM.getContext("2d"),
+  INTEM: canvases.INTEM.getContext("2d"),
+  FIBTEM: canvases.FIBTEM.getContext("2d"),
+  SLOT4: canvases.SLOT4.getContext("2d"),
+};
+
+const curves = {
+  EXTEM: { samples:[], lastSampleMin:0 },
+  INTEM: { samples:[], lastSampleMin:0 },
+  FIBTEM:{ samples:[], lastSampleMin:0 },
+  SLOT4: { samples:[], lastSampleMin:0 },
+};
+
+function resizeCanvasOne(c, ctx){
+  const rect = c.getBoundingClientRect();
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  canvas.width = Math.floor(rect.width * dpr);
-  canvas.height = Math.floor(rect.height * dpr);
+  c.width = Math.floor(rect.width * dpr);
+  c.height = Math.floor(rect.height * dpr);
   ctx.setTransform(dpr,0,0,dpr,0,0);
 }
-window.addEventListener("resize", ()=> { resizeCanvas(); redraw(true); });
-resizeCanvas();
+function resizeAll(){
+  resizeCanvasOne(canvases.EXTEM, ctxs.EXTEM);
+  resizeCanvasOne(canvases.INTEM, ctxs.INTEM);
+  resizeCanvasOne(canvases.FIBTEM, ctxs.FIBTEM);
+  resizeCanvasOne(canvases.SLOT4, ctxs.SLOT4);
+  redrawAll(true);
+}
+window.addEventListener("resize", resizeAll);
 
-/* ---------- Grid (Y simétrica) ---------- */
-function drawGrid(w,h){
+/* Grid para ROTEM: x=tiempo (min), y=amplitud (mm, 0..80 arriba y abajo) */
+function drawGrid(ctx, w, h){
   ctx.save();
   ctx.lineWidth = 1;
 
-  const pad = 18;
+  const pad = 16;
   const left = pad, top = pad, right = w-pad, bottom = h-pad;
   const midY = (top + bottom) / 2;
 
   ctx.strokeStyle = "rgba(255,255,255,.06)";
+
+  // bordes mínimos
   ctx.beginPath();
   ctx.moveTo(left, top);
   ctx.lineTo(left, bottom);
   ctx.lineTo(right, bottom);
   ctx.stroke();
 
-  const xTicks = 12; // 0..60 -> cada 5
+  // vertical: ticks según ventana
+  const xTicks = 12; // división fija -> etiquetas cada 10 aprox (según ventana)
   for(let i=1;i<=xTicks;i++){
     const x = lerp(left, right, i/xTicks);
     ctx.beginPath();
@@ -938,17 +1196,18 @@ function drawGrid(w,h){
     ctx.lineTo(x, bottom);
     ctx.stroke();
 
-    if(i % 2 === 0){
-      ctx.fillStyle = "rgba(233,241,255,.55)";
-      ctx.font = "12px system-ui";
+    if(i % 3 === 0){
+      ctx.fillStyle = "rgba(233,241,255,.50)";
+      ctx.font = "11px system-ui";
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const t = (curve.maxMin * i/xTicks);
-      ctx.fillText(`${Math.round(t)}m`, x, bottom+6);
+      const t = (view.maxMin * i/xTicks);
+      ctx.fillText(`${Math.round(t)}m`, x, bottom+5);
     }
   }
 
-  const yTicks = 8; // ±80 (half width)
+  // horizontal amplitud
+  const yTicks = 8; // ±80
   for(let i=1;i<=yTicks;i++){
     const yTop = lerp(midY, top, i/yTicks);
     const yBot = lerp(midY, bottom, i/yTicks);
@@ -956,19 +1215,20 @@ function drawGrid(w,h){
     ctx.beginPath(); ctx.moveTo(left, yTop); ctx.lineTo(right, yTop); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(left, yBot); ctx.lineTo(right, yBot); ctx.stroke();
 
-    if(i % 2 === 0){
-      ctx.fillStyle = "rgba(233,241,255,.55)";
-      ctx.font = "12px system-ui";
+    if(i === 4 || i === 8){
+      ctx.fillStyle = "rgba(233,241,255,.50)";
+      ctx.font = "11px system-ui";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       const mm = Math.round(80 * i/yTicks);
-      ctx.fillText(`${mm}`, left-8, yTop);
-      ctx.fillText(`${mm}`, left-8, yBot);
+      ctx.fillText(`${mm}`, left-6, yTop);
+      ctx.fillText(`${mm}`, left-6, yBot);
     }
   }
 
+  // línea central
   ctx.save();
-  ctx.strokeStyle = "rgba(233,241,255,.16)";
+  ctx.strokeStyle = "rgba(233,241,255,.14)";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(left, midY);
@@ -976,197 +1236,86 @@ function drawGrid(w,h){
   ctx.stroke();
   ctx.restore();
 
-  ctx.fillStyle = "rgba(233,241,255,.65)";
-  ctx.font = "12px system-ui";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText("Amplitud (mm) [half-width]", left+6, top+4);
-
-  ctx.textAlign = "right";
-  ctx.fillText("Tiempo", right-4, bottom+6);
-
   ctx.restore();
 }
 
-function drawLabel(x, y, text, color){
-  ctx.save();
-  ctx.font = "12px system-ui";
-  ctx.fillStyle = color;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0,0,0,.55)";
-  ctx.shadowBlur = 6;
-  ctx.fillText(text, x, y);
-  ctx.restore();
-}
-
-/* ---------- Marcadores ROTEM (CT, CFT, Ax) ---------- */
-function drawMarkers(w,h, p){
-  const pad = 18;
-  const left = pad, top = pad, right = w-pad, bottom = h-pad;
-  const midY = (top + bottom)/2;
-  const xScale = (right-left) / curve.maxMin;
-  const yScale = (bottom-top) / (2*80);
-
-  const assay = getAssay();
-  const cMain = assay.color.replace("0.95",".75").replace("0.92",".75");
-  const cCT   = "rgba(89,183,255,.65)";
-  const cCFT  = "rgba(255,214,10,.55)";
-  const cAx   = "rgba(233,241,255,.55)";
-
-  const r = computeROTEMDerived(p);
-
-  if(r.tCT!=null){
-    const xCT = left + r.tCT*xScale;
-    ctx.save();
-    ctx.strokeStyle = cCT;
-    ctx.lineWidth = 1.2;
-    ctx.setLineDash([5,6]);
-    ctx.beginPath();
-    ctx.moveTo(xCT, top);
-    ctx.lineTo(xCT, bottom);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-    drawLabel(clamp(xCT+6, left+6, right-80), top+22, "CT", cCT);
-  }
-
-  const tA20 = tWhenFullAmpReaches(20, p);
-  if(r.tCT!=null && tA20!=null){
-    const x1 = left + r.tCT*xScale;
-    const x2 = left + tA20*xScale;
-    ctx.save();
-    ctx.strokeStyle = cCFT;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(x1, midY);
-    ctx.lineTo(x2, midY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x1, midY-8); ctx.lineTo(x1, midY+8);
-    ctx.moveTo(x2, midY-8); ctx.lineTo(x2, midY+8);
-    ctx.stroke();
-    ctx.restore();
-    drawLabel(clamp((x1+x2)/2 - 14, left+6, right-80), midY-14, "CFT", cCFT);
-  }
-
-  const points = [
-    {t:5,  label:"A5"},
-    {t:10, label:"A10"},
-    {t:20, label:"A20"},
-    {t:30, label:"A30"},
-    {t:60, label:"A60"},
-  ];
-
-  ctx.save();
-  ctx.fillStyle = cMain;
-  ctx.strokeStyle = "rgba(0,0,0,.35)";
-  ctx.lineWidth = 2;
-
-  for(const pt of points){
-    if(pt.t > curve.maxMin) continue;
-    const ampFull = fullAmpAt(pt.t, p);
-    const half = ampFull/2;
-    const x = left + pt.t*xScale;
-    const y = midY - (half * yScale);
-
-    ctx.beginPath();
-    ctx.arc(x, y, 3.5, 0, Math.PI*2);
-    ctx.fill();
-    ctx.stroke();
-
-    const ly = clamp(y - 14, top+18, bottom-18);
-    drawLabel(clamp(x+6, left+6, right-60), ly, pt.label, cAx);
-  }
-  ctx.restore();
-}
-
-/* ---------- Render: banda simétrica ---------- */
-function redraw(force=false){
-  const w = canvas.getBoundingClientRect().width;
-  const h = canvas.getBoundingClientRect().height;
-
-  ctx.clearRect(0,0,w,h);
-  drawGrid(w,h);
-
-  const pad = 18;
+function drawCurve(ctx, w, h, chKey, params, curve){
+  const style = CHANNEL_STYLE[chKey];
+  const pad = 16;
   const left = pad, top = pad, right = w-pad, bottom = h-pad;
   const midY = (top + bottom) / 2;
 
-  const xScale = (right-left) / curve.maxMin;
+  const xScale = (right-left) / view.maxMin;
   const yScale = (bottom-top) / (2*80);
 
-  const assay = getAssay();
-  assaySwatch.style.background = assay.color;
-  assaySwatch.style.boxShadow = `0 0 0 3px ${assay.color.replace("0.95","0.12").replace("0.92","0.12")}`;
+  ctx.clearRect(0,0,w,h);
+  drawGrid(ctx, w, h);
 
-  // sombreado leve si lisis alta (LI30 bajo)
-  if(rotem && rotem.LI30 < 90){
+  // fondo sutil si hay lisis relevante
+  const ml = getML(params);
+  if(ml > 15){
     ctx.save();
     ctx.fillStyle = "rgba(255,59,48,.05)";
     ctx.fillRect(left, top, right-left, bottom-top);
     ctx.restore();
   }
 
-  // Reactivo bar (se llena con el tiempo)
-  const barH = 6;
-  const barW = (right-left);
-  const progress = clamp(tMin / curve.maxMin, 0, 1);
-
+  // CT marker (línea punteada, sin textos grandes para evitar superposición)
+  const xCT = left + clamp(params.CTmin, 0, view.maxMin) * xScale;
   ctx.save();
-  ctx.fillStyle = "rgba(255,255,255,.06)";
-  ctx.fillRect(left, top+2, barW, barH);
-  ctx.fillStyle = assay.color.replace("0.95","0.55").replace("0.92","0.55");
-  ctx.fillRect(left, top+2, barW*progress, barH);
+  ctx.strokeStyle = hexToRgba(style.color, .45);
+  ctx.setLineDash([5,6]);
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(xCT, top);
+  ctx.lineTo(xCT, bottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
 
-  if(curve.samples.length < 2){
-    drawMarkers(w,h, teg);
-    return;
-  }
+  if(curve.samples.length < 2) return;
 
-  // relleno
+  // fill band
   ctx.save();
   const grad = ctx.createLinearGradient(0, top, 0, bottom);
-  const cTop = assay.color.replace("0.95","0.08").replace("0.92","0.08");
-  const cMid = assay.color.replace("0.95","0.16").replace("0.92","0.16");
-  grad.addColorStop(0, cTop);
-  grad.addColorStop(0.5, cMid);
-  grad.addColorStop(1, cTop);
+  grad.addColorStop(0, hexToRgba(style.color, .10));
+  grad.addColorStop(0.5, hexToRgba(style.color, .22));
+  grad.addColorStop(1, hexToRgba(style.color, .10));
   ctx.fillStyle = grad;
 
   ctx.beginPath();
   for(let i=0;i<curve.samples.length;i++){
     const s = curve.samples[i];
     const x = left + s.t * xScale;
-    const y = midY - (s.ampHalf * yScale);
+    const y = midY - (s.amp * yScale);
     if(i===0) ctx.moveTo(x,y);
     else ctx.lineTo(x,y);
   }
   for(let i=curve.samples.length-1;i>=0;i--){
     const s = curve.samples[i];
     const x = left + s.t * xScale;
-    const y = midY + (s.ampHalf * yScale);
+    const y = midY + (s.amp * yScale);
     ctx.lineTo(x,y);
   }
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 
+  // edges
   function strokeEdge(sign){
     ctx.save();
-    ctx.lineWidth = 2.3;
+    ctx.lineWidth = 2.1;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.strokeStyle = "rgba(233,241,255,.88)";
-    ctx.shadowColor = assay.color.replace("0.95","0.25").replace("0.92","0.25");
-    ctx.shadowBlur = 12;
+    ctx.strokeStyle = style.edge;
+    ctx.shadowColor = hexToRgba(style.color, .22);
+    ctx.shadowBlur = 10;
 
     ctx.beginPath();
     for(let i=0;i<curve.samples.length;i++){
       const s = curve.samples[i];
       const x = left + s.t * xScale;
-      const y = midY + sign*(s.ampHalf * yScale);
+      const y = midY + sign*(s.amp * yScale);
       if(i===0) ctx.moveTo(x,y);
       else ctx.lineTo(x,y);
     }
@@ -1176,229 +1325,170 @@ function redraw(force=false){
   strokeEdge(-1);
   strokeEdge(+1);
 
-  drawMarkers(w,h, teg);
-
-  // “pill” de info arriba a la derecha (evita superposición)
-  ctx.save();
-  const text = `CT=${rotem.CTs!=null?fmt(rotem.CTs,0):"—"}s  CFT=${rotem.CFTs!=null?fmt(rotem.CFTs,0):"—"}s  A10=${fmt(rotem.A10,0)}  MCF=${fmt(rotem.MCF,0)}  LI30=${fmt(rotem.LI30,0)}%`;
-  ctx.font = "12px system-ui";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "top";
-
-  const paddingX = 10, paddingY = 6;
-  const metrics = ctx.measureText(text);
-  const boxW = metrics.width + paddingX*2;
-  const boxH = 22;
-
-  const x = right;
-  const y = top + 12;
-
-  ctx.fillStyle = "rgba(0,0,0,.28)";
-  ctx.strokeStyle = "rgba(255,255,255,.10)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  const rx = x - boxW, ry = y;
-  const r = 10;
-  ctx.moveTo(rx+r, ry);
-  ctx.arcTo(rx+boxW, ry, rx+boxW, ry+boxH, r);
-  ctx.arcTo(rx+boxW, ry+boxH, rx, ry+boxH, r);
-  ctx.arcTo(rx, ry+boxH, rx, ry, r);
-  ctx.arcTo(rx, ry, rx+boxW, ry, r);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.fillStyle = "rgba(233,241,255,.78)";
-  ctx.fillText(text, x - paddingX, y + 5);
-  ctx.restore();
-}
-
-/* ---------- Métricas UI ---------- */
-function setMetric(key, value){
-  const vEl = el(`m_${key}`);
-  const bEl = el(`b_${key}`);
-  if(!vEl || !bEl) return;
-
-  let display;
-  if(value==null || Number.isNaN(value)){
-    display = "—";
-  }else{
-    if(key==="CT" || key==="CFT") display = fmt(value,0);
-    else display = fmt(value,0);
+  // Marcadores A5/A10 sutiles (puntitos pequeños, sin texto encima)
+  // Para no ensuciar: solo si ya pasó CT+10 min
+  const tA5 = params.CTmin + 5;
+  const tA10 = params.CTmin + 10;
+  const tNowInWindow = view.maxMin; // solo para decidir si dibujar; la curva ya está en ventana
+  if(tA5 <= view.maxMin){
+    const a5 = getAx(params,5);
+    const x = left + tA5*xScale;
+    const yU = midY - a5*yScale, yD = midY + a5*yScale;
+    ctx.save();
+    ctx.fillStyle = hexToRgba(style.color,.75);
+    ctx.beginPath(); ctx.arc(x, yU, 2.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, yD, 2.2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
   }
-
-  vEl.textContent = display + " " + (REF[key]?.unit || "");
-  const b = badgeFor(key, value);
-  bEl.className = `badge ${b.cls}`;
-  bEl.textContent = b.text || "—";
+  if(tA10 <= view.maxMin){
+    const a10 = getAx(params,10);
+    const x = left + tA10*xScale;
+    const yU = midY - a10*yScale, yD = midY + a10*yScale;
+    ctx.save();
+    ctx.fillStyle = hexToRgba(style.color,.55);
+    ctx.beginPath(); ctx.arc(x, yU, 2.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, yD, 2.2, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
 }
 
-function updateHints(){
+/* ====== Sampling ====== */
+function sampleCurve(curveObj, params){
+  // sampling estable con velocidad alta (evita “cortes”)
+  const baseStep = clamp(0.14 - (simSpeed-8)*0.0012, 0.045, 0.14); // min
+  while(curveObj.lastSampleMin + baseStep <= tMin){
+    curveObj.lastSampleMin += baseStep;
+
+    const tLocal = curveObj.lastSampleMin;
+
+    // half-width base
+    const base = halfWidthAt(tLocal, params);
+
+    // ruido: pequeño y proporcional a amplitud
+    const n = smoothNoise(noiseSeed, tLocal*0.55) * 0.9;
+    const amp = clamp(base + n * (0.25 + base/85), 0, 90);
+
+    curveObj.samples.push({t: tLocal, amp});
+
+    // Mantener ventana [tMin - view.maxMin, tMin]
+    const minT = tMin - view.maxMin;
+    if(minT > 0){
+      while(curveObj.samples.length && curveObj.samples[0].t < minT) curveObj.samples.shift();
+      for(const s of curveObj.samples) s.t = s.t - minT;
+    }
+  }
+}
+
+/* ====== Params + UI update ====== */
+function setMetric(chSlot, key, val, unit){
+  const id = `m_${chSlot}_${key}`;
+  const node = el(id);
+  if(!node) return;
+  node.textContent = (val == null || Number.isNaN(val)) ? "—" : `${val}${unit||""}`;
+}
+function setTimeLabel(chSlot, text){
+  const node = el(`time_${chSlot}`);
+  if(node) node.textContent = text;
+}
+function setReagent(chSlot, text){
+  const node = el(`m_${chSlot}_REAG`);
+  if(node) node.textContent = text;
+}
+
+function updateChannelTable(chSlot, params){
+  const CTs = Math.round(params.CT);
+  const CFTs = Math.round(params.CFT);
+  const A5 = Math.round(getAx(params,5));
+  const A10 = Math.round(getAx(params,10));
+  const A20 = Math.round(getAx(params,20));
+  const A30 = Math.round(getAx(params,30));
+  const A60 = Math.round(getA60Abs(params));
+  const MCF = Math.round(params.MCF);
+  const ML = Math.round(getML(params));
+
+  setMetric(chSlot, "CT", CTs, " s");
+  setMetric(chSlot, "CFT", CFTs, " s");
+  setMetric(chSlot, "A5", A5, " mm");
+  setMetric(chSlot, "A10", A10, " mm");
+  setMetric(chSlot, "A20", A20, " mm");
+  setMetric(chSlot, "A30", A30, " mm");
+  setMetric(chSlot, "A60", A60, " mm");
+  setMetric(chSlot, "MCF", MCF, " mm");
+  setMetric(chSlot, "ML", ML, " %");
+  setReagent(chSlot, params.reagent);
+
+  // etiqueta de tiempo (solo informativa)
+  setTimeLabel(chSlot, `CT ${CTs}s · MCF ${MCF}mm`);
+}
+
+/* ====== Hints didácticos (sin invadir) ====== */
+function updateHints(paramsBySlot){
   if(helpSelect.value === "off"){
     hintLine.textContent = "Modo evaluación: sin pistas.";
     return;
   }
 
-  const assay = getAssay();
+  // Usamos EXTEM y comparación INTEM vs HEPTEM/APTEM
+  const ext = paramsBySlot.EXTEM;
+  const inte = paramsBySlot.INTEM;
+  const fib = paramsBySlot.FIBTEM;
+  const slot4 = paramsBySlot.SLOT4;
+
+  const mlExt = Math.round(getML(ext));
+  const ml4 = Math.round(getML(slot4));
+  const a5Ext = Math.round(getAx(ext,5));
+  const a5Fib = Math.round(getAx(fib,5));
+
   const hints = [];
 
-  if(rotem.CTs!=null && rotem.CTs > 120){
-    if(assay.id==="HEPTEM" || assay.id==="INTEM") hints.push("CT prolongado → considerar heparina residual (comparar INTEM vs HEPTEM / protamina).");
-    else hints.push("CT prolongado → déficit factores o anticoagulación (PFC / revisar heparina).");
+  // factores / CT
+  if(ext.CT > 95){
+    hints.push("CT prolongado (EXTEM) → pensar déficit de factores (PFC/PCC según contexto).");
   }
-  if(rotem.CFTs!=null && rotem.CFTs > 180) hints.push("CFT prolongado → formación lenta del coágulo (fibrinógeno bajo / hemodilución).");
-  if(rotem.A10 < 35) hints.push("A10 bajo → pensar fibrinógeno y/o plaquetas (FIBTEM ayuda a diferenciar).");
-  if(rotem.MCF < 50) hints.push("MCF bajo → coágulo débil (plaquetas/fibrina).");
-  if(rotem.LI30 < 90) hints.push("LI30 bajo → fibrinólisis relevante (TXA / comparar EXTEM vs APTEM).");
 
-  if(hints.length===0) hints.push("Curva compatible con hemostasia adecuada para el contexto.");
+  // heparina: INTEM vs HEPTEM (si slot4=HEPTEM)
+  if(slotMap[3] === "HEPTEM"){
+    if(inte.CT > 260 && slot4.CT < inte.CT*0.70){
+      hints.push("INTEM CT prolongado con HEPTEM corregido → efecto heparina (considerar protamina).");
+    }
+  } else {
+    // slot4=APTEM: no comparar heparina
+    if(inte.CT > 260){
+      hints.push("INTEM CT prolongado → considerar heparina o déficit de factores (comparar con clínica).");
+    }
+  }
+
+  // fibrinógeno: FIBTEM bajo
+  if(a5Fib < 9){
+    hints.push("FIBTEM A5 bajo → hipofibrinogenemia / polimerización alterada (crio/fibrinógeno).");
+  }
+
+  // plaquetas: EXTEM bajo con FIBTEM relativamente ok
+  if(a5Ext < 35 && a5Fib >= 9){
+    hints.push("EXTEM A5 bajo con FIBTEM conservado → plaquetopenia/disfunción plaquetaria (plaquetas).");
+  }
+
+  // fibrinólisis: EXTEM cae pero APTEM no (si slot4=APTEM)
+  if(slotMap[3] === "APTEM"){
+    if(mlExt > 15 && ml4 < 10){
+      hints.push("EXTEM con ML alto pero APTEM estable → hiperfibrinólisis (considerar TXA).");
+    } else if(mlExt > 15){
+      hints.push("ML alto → fibrinólisis probable (confirmar con APTEM / tratar según contexto).");
+    }
+  } else {
+    if(mlExt > 15) hints.push("ML alto → fibrinólisis probable (considerar antifibrinolítico según contexto).");
+  }
+
+  if(hints.length === 0) hints.push("Patrón global compatible con hemostasia adecuada (en este modelo).");
   hintLine.textContent = hints[0];
 }
 
-/* ---------- Eventos ---------- */
-function processEvents(){
-  const due = pendingEvents.filter(e => e.atMin <= tMin);
-  if(due.length){
-    due.sort((a,b)=>a.atMin-b.atMin);
-    for(const e of due){
-      e.applyFn();
-      log(`Efecto: ${e.label}`);
-    }
-    pendingEvents = pendingEvents.filter(e => e.atMin > tMin);
-  }
-}
-
-/* ---------- Muestreo de curva ---------- */
-function sampleCurve(){
-  const step = clamp(0.14 - (simSpeed-6)*0.0015, 0.06, 0.14);
-
-  while(curve.lastSampleMin + step <= tMin){
-    curve.lastSampleMin += step;
-
-    const base = halfWidthAt(curve.lastSampleMin, teg);
-
-    const n = smoothNoise(noiseSeed, curve.lastSampleMin*0.55) * 1.0;
-    const ampHalf = clamp(base + n * (0.35 + base/70), 0, 80);
-
-    curve.samples.push({t: curve.lastSampleMin, ampHalf});
-
-    const minT = tMin - curve.maxMin;
-    if(minT > 0){
-      while(curve.samples.length && curve.samples[0].t < minT) curve.samples.shift();
-      for(const s of curve.samples) s.t = s.t - minT;
-    }
-  }
-}
-
-/* ---------- Loop ---------- */
-let lastFrame = now();
-function tick(){
-  requestAnimationFrame(tick);
-  const t = now();
-  const dtReal = (t - lastFrame) / 1000;
-  lastFrame = t;
-
-  if(!running) return;
-
-  const dtMin = (dtReal / 60) * simSpeed;
-  tMin += dtMin;
-
-  processEvents();
-  teg = computeTEGFromState(state);
-  rotem = computeROTEMDerived(teg);
-
-  sampleCurve();
-  redraw();
-
-  clockText.textContent = `t=${fmt(tMin,1)} min`;
-
-  setMetric("CT", rotem.CTs);
-  setMetric("CFT", rotem.CFTs);
-  setMetric("A10", rotem.A10);
-  setMetric("MCF", rotem.MCF);
-  setMetric("LI30", rotem.LI30);
-
-  updateHints();
-}
-
-/* ---------- Controles ---------- */
-function setRunning(isRunning){
-  running = isRunning;
-  statusDot.className = "dot" + (running ? "" : " pause");
-  statusText.textContent = running ? "En curso" : "Pausado";
-  btnPause.textContent = running ? "Pausar" : "Reanudar";
-}
-function newTest(){
-  tMin = 0;
-  curve.samples = [];
-  curve.lastSampleMin = 0;
-  pendingEvents = [];
-  noiseSeed = mulberry32((Math.random()*1e9)>>>0);
-
-  teg = computeTEGFromState(state);
-  rotem = computeROTEMDerived(teg);
-
-  setRunning(true);
-  log("Nuevo test iniciado.");
-  redraw(true);
-}
-function resetAll(){
-  loadScenario(scenarioSelect.value);
-  newTest();
-  log("Reset completo al escenario.");
-}
-
-/* ---------- Escenarios / Ensayos ---------- */
-function populateScenarios(){
-  scenarioSelect.innerHTML = "";
-  for(const s of SCENARIOS){
-    const opt = document.createElement("option");
-    opt.value = s.id;
-    opt.textContent = s.name;
-    scenarioSelect.appendChild(opt);
-  }
-}
-function populateAssays(){
-  assaySelect.innerHTML = "";
-  for(const a of ASSAYS){
-    const opt = document.createElement("option");
-    opt.value = a.id;
-    opt.textContent = a.name;
-    assaySelect.appendChild(opt);
-  }
-}
-function getScenarioById(id){
-  return SCENARIOS.find(s=>s.id===id) || SCENARIOS[0];
-}
-function syncAdvancedSliders(){
-  tempRange.value = state.temp; tempVal.textContent = fmt(state.temp,1);
-  phRange.value = state.ph; phVal.textContent = fmt(state.ph,2);
-  caRange.value = state.ca; caVal.textContent = fmt(state.ca,2);
-  dilutionRange.value = Math.round(state.dilution*100); dilutionVal.textContent = `${Math.round(state.dilution*100)}%`;
-  heparinRange.value = Math.round(state.heparin*100); heparinVal.textContent = `${Math.round(state.heparin*100)}%`;
-  lysisRange.value = Math.round(state.lysis*100); lysisVal.textContent = `${Math.round(state.lysis*100)}%`;
-}
-function updateScenarioTag(){
-  const sc = getScenarioById(scenarioSelect.value);
-  const a = getAssay();
-  scenarioTag.textContent = `Escenario: ${sc.name} • ${a.name}`;
-  scenarioTag.title = a.note || sc.note || sc.name;
-}
-function loadScenario(id){
-  const sc = getScenarioById(id);
-  state = deepCopy(sc.state);
-  syncAdvancedSliders();
-  updateScenarioTag();
-  log(`Escenario cargado: ${sc.name}.`);
-  teg = computeTEGFromState(state);
-  rotem = computeROTEMDerived(teg);
-  redraw(true);
-}
-
-/* ---------- Intervenciones (con retardo) ---------- */
+/* =========================================================
+   Eventos / Intervenciones (con retardo)
+   ========================================================= */
 function eventDelay(){
-  if(delayMode.value === "fast") return {min:0.7, max:2.0};
-  return {min:2.5, max:7.0};
+  if(delayMode.value === "fast") return {min:0.6, max:1.6};
+  return {min:2.0, max:6.5};
 }
 function doseMultiplier(){
   const d = doseSelect.value;
@@ -1420,51 +1510,202 @@ function schedule(label, applyFn){
 
 const interventions = {
   plasma(){ schedule("PFC", (m)=>{
-    state.factors = clamp(state.factors + 0.22*m, 0.05, 1.25);
-    state.fibrinogen = clamp(state.fibrinogen + 30*m, 30, 650);
+    state.factors = clamp(state.factors + 0.22*m, 0.05, 1.35);
+    state.fibrinogen = clamp(state.fibrinogen + 35*m, 30, 750);
     state.dilution = clamp(state.dilution - 0.03*m, 0, 0.70);
   });},
   platelets(){ schedule("Plaquetas", (m)=>{
-    state.platelets = clamp(state.platelets + 55*m, 5, 350);
+    state.platelets = clamp(state.platelets + 60*m, 5, 420);
     state.dilution = clamp(state.dilution - 0.02*m, 0, 0.70);
   });},
   fibrinogen(){ schedule("Crio / Fibrinógeno", (m)=>{
-    state.fibrinogen = clamp(state.fibrinogen + 140*m, 30, 650);
+    state.fibrinogen = clamp(state.fibrinogen + 160*m, 30, 750);
     state.dilution = clamp(state.dilution - 0.01*m, 0, 0.70);
   });},
-  txa(){ schedule("TXA", (m)=>{ state.txa = clamp(state.txa + 0.55*m, 0, 1); }); },
-  protamine(){ schedule("Protamina", (m)=>{ state.heparin = clamp(state.heparin - 0.55*m, 0, 1); }); },
+  txa(){ schedule("TXA", (m)=>{ state.txa = clamp(state.txa + 0.60*m, 0, 1); }); },
+  protamine(){ schedule("Protamina", (m)=>{ state.heparin = clamp(state.heparin - 0.60*m, 0, 1); }); },
   calcium(){ schedule("Calcio", (m)=>{ state.ca = clamp(state.ca + 0.12*m, 0.70, 1.30); }); },
   fluids(){ schedule("Fluidos", (m)=>{ state.dilution = clamp(state.dilution + 0.12*m, 0, 0.70); }); },
-  rbc(){ schedule("Concentrado GR", (m)=>{ state.ph = clamp(state.ph + 0.01*0.15*m, 7.0, 7.45); }); },
-  heparin(){ schedule("Heparina", (m)=>{ state.heparin = clamp(state.heparin + 0.25*m, 0, 1); }); }
+  heparin(){ schedule("Heparina", (m)=>{ state.heparin = clamp(state.heparin + 0.28*m, 0, 1); }); },
+  pcc(){ schedule("PCC (4F)", (m)=>{
+    // más directo sobre “factores” (rápido sobre CT)
+    state.factors = clamp(state.factors + 0.30*m, 0.05, 1.35);
+    // leve aumento de fibrinógeno funcional
+    state.fibrinogen = clamp(state.fibrinogen + 25*m, 30, 750);
+  }); }
 };
 
-/* ---------- UI events ---------- */
+function processEvents(){
+  const due = pendingEvents.filter(e => e.atMin <= tMin);
+  if(due.length){
+    due.sort((a,b)=>a.atMin-b.atMin);
+    for(const e of due){
+      e.applyFn();
+      log(`Efecto: ${e.label}`);
+    }
+    pendingEvents = pendingEvents.filter(e => e.atMin > tMin);
+  }
+}
+
+/* =========================================================
+   Escenarios / init
+   ========================================================= */
+function populateScenarios(){
+  scenarioSelect.innerHTML = "";
+  for(const s of SCENARIOS){
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = s.name;
+    scenarioSelect.appendChild(opt);
+  }
+}
+function getScenarioById(id){
+  return SCENARIOS.find(s=>s.id===id) || SCENARIOS[0];
+}
+function syncAdvancedSliders(){
+  tempRange.value = state.temp; tempVal.textContent = fmt(state.temp,1);
+  phRange.value = state.ph; phVal.textContent = fmt(state.ph,2);
+  caRange.value = state.ca; caVal.textContent = fmt(state.ca,2);
+  dilutionRange.value = Math.round(state.dilution*100); dilutionVal.textContent = `${Math.round(state.dilution*100)}%`;
+  heparinRange.value = Math.round(state.heparin*100); heparinVal.textContent = `${Math.round(state.heparin*100)}%`;
+  lysisRange.value = Math.round(state.lysis*100); lysisVal.textContent = `${Math.round(state.lysis*100)}%`;
+}
+function loadScenario(id){
+  const sc = getScenarioById(id);
+  state = deepCopy(sc.state);
+  scenarioTag.textContent = `Escenario: ${sc.name}`;
+  scenarioTag.title = sc.note || sc.name;
+  syncAdvancedSliders();
+  log(`Escenario cargado: ${sc.name}.`);
+}
+
+function setRunning(isRunning){
+  running = isRunning;
+  statusDot.className = "dot" + (running ? "" : " pause");
+  statusText.textContent = running ? "En curso" : "Pausado";
+  btnPause.textContent = running ? "Pausar" : "Reanudar";
+}
+
+function resetCurves(){
+  tMin = 0;
+  pendingEvents = [];
+  noiseSeed = mulberry32((Math.random()*1e9)>>>0);
+  for(const k of Object.keys(curves)){
+    curves[k].samples = [];
+    curves[k].lastSampleMin = 0;
+  }
+}
+
+function newTest(){
+  resetCurves();
+  setRunning(true);
+  log("Nuevo test iniciado.");
+  redrawAll(true);
+}
+
+function resetAll(){
+  loadScenario(scenarioSelect.value);
+  newTest();
+  log("Reset completo al escenario.");
+}
+
+/* =========================================================
+   Draw cycle
+   ========================================================= */
+function redrawAll(force=false){
+  // compute params for each slot
+  const paramsBySlot = {
+    EXTEM: computeROTEMParams("EXTEM", state),
+    INTEM: computeROTEMParams("INTEM", state),
+    FIBTEM: computeROTEMParams("FIBTEM", state),
+    SLOT4: computeROTEMParams(slotMap[3], state),
+  };
+
+  // sample each
+  sampleCurve(curves.EXTEM, paramsBySlot.EXTEM);
+  sampleCurve(curves.INTEM, paramsBySlot.INTEM);
+  sampleCurve(curves.FIBTEM, paramsBySlot.FIBTEM);
+  sampleCurve(curves.SLOT4, paramsBySlot.SLOT4);
+
+  // draw each canvas
+  for(const slot of ["EXTEM","INTEM","FIBTEM","SLOT4"]){
+    const c = (slot==="SLOT4") ? canvases.SLOT4 : canvases[slot];
+    const ctx = (slot==="SLOT4") ? ctxs.SLOT4 : ctxs[slot];
+    const rect = c.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+
+    const ch = (slot==="SLOT4") ? slotMap[3] : slot;
+
+    drawCurve(ctx, w, h, ch, paramsBySlot[slot], curves[slot]);
+  }
+
+  // update tables (slot 4 uses DOM ids del slot4 (APTEM))
+  updateChannelTable("EXTEM", paramsBySlot.EXTEM);
+  updateChannelTable("INTEM", paramsBySlot.INTEM);
+  updateChannelTable("FIBTEM", paramsBySlot.FIBTEM);
+  updateChannelTable("APTEM", paramsBySlot.SLOT4); // slot4 DOM se llama APTEM por layout
+
+  // update hint
+  updateHints(paramsBySlot);
+}
+
+let lastFrame = now();
+function tick(){
+  requestAnimationFrame(tick);
+  const t = now();
+  const dtReal = (t - lastFrame) / 1000;
+  lastFrame = t;
+
+  if(!running) return;
+
+  const dtMin = (dtReal / 60) * simSpeed;
+  tMin += dtMin;
+
+  processEvents();
+
+  // redraw (sampling + render)
+  redrawAll();
+
+  clockText.textContent = `t=${fmt(tMin,1)} min`;
+}
+
+/* =========================================================
+   UI wiring
+   ========================================================= */
 populateScenarios();
-populateAssays();
-
 scenarioSelect.value = "normal";
-assaySelect.value = currentAssayId;
-
 loadScenario("normal");
-newTest();
+
+function setAdvanced(on){
+  advSwitch.classList.toggle("on", on);
+  advSwitch.setAttribute("aria-checked", on ? "true" : "false");
+  advancedSection.style.display = on ? "" : "none";
+}
+setAdvanced(false);
 
 scenarioSelect.addEventListener("change", ()=>{
   loadScenario(scenarioSelect.value);
   newTest();
 });
 
-assaySelect.addEventListener("change", ()=>{
-  currentAssayId = assaySelect.value;
-  updateScenarioTag();
-  log(`Ensayo: ${getAssay().name}.`);
-  newTest();
-});
-
 speedRange.addEventListener("input", ()=>{
   simSpeed = Number(speedRange.value);
   speedVal.textContent = `×${simSpeed}`;
+});
+
+timeWindowSelect.addEventListener("change", ()=>{
+  view.maxMin = Number(timeWindowSelect.value);
+  // limpiar muestras para evitar “saltos” en el re-escale
+  resetCurves();
+  log(`Ventana cambiada a ${view.maxMin} min.`);
+});
+
+fourthChannelSelect.addEventListener("change", ()=>{
+  applyFourthChannel();
+  // actualizar color del label del slot 4
+  el("lab_APTEM").style.background = hexToRgba(CHANNEL_STYLE[slotMap[3]].color,.85);
+  resetCurves();
+  log(`Canal 4 ahora: ${slotMap[3]}.`);
 });
 
 btnPause.addEventListener("click", ()=>{
@@ -1482,12 +1723,6 @@ document.querySelectorAll("[data-int]").forEach(btn=>{
 });
 
 /* toggle avanzado */
-function setAdvanced(on){
-  advSwitch.classList.toggle("on", on);
-  advSwitch.setAttribute("aria-checked", on ? "true" : "false");
-  advancedSection.style.display = on ? "" : "none";
-}
-setAdvanced(false);
 advSwitch.addEventListener("click", ()=> setAdvanced(!advSwitch.classList.contains("on")));
 advSwitch.addEventListener("keydown", (e)=>{
   if(e.key==="Enter" || e.key===" "){
@@ -1513,12 +1748,18 @@ lysisRange.addEventListener("input", ()=>{
   lysisVal.textContent = `${Math.round(state.lysis*100)}%`;
 });
 
-/* evitar scroll accidental sobre canvas */
-canvas.addEventListener("touchmove", (e)=> e.preventDefault(), {passive:false});
+/* evitar scroll accidental sobre canvases (iPad) */
+Object.values(canvases).forEach(cv=>{
+  cv.addEventListener("touchmove", (e)=> e.preventDefault(), {passive:false});
+});
 
-/* init */
+/* init final */
+view.maxMin = Number(timeWindowSelect.value);
+applyFourthChannel();
+applyChannelStyles();
+resizeAll();
+newTest();
 setRunning(true);
-redraw(true);
 tick();
 </script>
 </body>
