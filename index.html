@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Simulador de Tromboelastografía (TEG) — Entrenamiento</title>
+  <title>Simulador ROTEM — Entrenamiento</title>
   <style>
     :root{
       --bg:#0b0d10;
@@ -381,7 +381,7 @@
   <div class="left">
     <div class="topbar">
       <div class="brand">
-        <div class="title">TEG • Simulador</div>
+        <div class="title">ROTEM • Simulador</div>
         <div class="subtitle">Curva + parámetros para decisiones en quirófano simulado</div>
       </div>
       <div class="statusPill" id="statusPill">
@@ -394,8 +394,8 @@
     <div class="canvasWrap">
       <canvas id="tegCanvas"></canvas>
       <div class="overlayLegend">
-        <div class="tag"><span class="swatch"></span> Traza TEG (simétrica)</div>
-        <div class="tag" id="scenarioTag">Escenario: Normal</div>
+        <div class="tag"><span class="swatch" id="assaySwatch"></span> Traza ROTEM (simétrica)</div>
+        <div class="tag" id="scenarioTag">Escenario: Normal • EXTEM</div>
       </div>
     </div>
 
@@ -419,13 +419,17 @@
 
       <div class="section">
         <div class="sectionTitle">
-          <h3>Escenario</h3>
-          <small>preconfigurado</small>
+          <h3>Configuración</h3>
+          <small>escenario + ensayo</small>
         </div>
-        <div class="row">
+        <div class="row3">
           <div>
-            <label for="scenarioSelect">Elegir escenario</label>
+            <label for="scenarioSelect">Escenario clínico</label>
             <select id="scenarioSelect"></select>
+          </div>
+          <div>
+            <label for="assaySelect">Ensayo (ROTEM)</label>
+            <select id="assaySelect"></select>
           </div>
           <div>
             <label for="speedRange">Velocidad simulación</label>
@@ -435,6 +439,7 @@
             </div>
           </div>
         </div>
+
         <div style="margin-top:10px" class="row">
           <div>
             <label>Modo avanzado</label>
@@ -586,7 +591,7 @@
 
 <script>
 /* =========================================================
-   Simulador TEG — Motor fisiológico + render simétrico realista
+   Simulador ROTEM — Motor fisiológico + render simétrico realista
    ========================================================= */
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -618,30 +623,53 @@ const SCENARIOS = [
     state:{ factors:0.95,fibrinogen:320,platelets:220,lysis:0.05,heparin:0.00,temp:36.6,ph:7.36,ca:1.05,dilution:0.10,txa:0.0 } },
   { id:"hemodilution", name:"Hemodilución masiva", note:"Fluidos → dilución de factores/fib/plaquetas.",
     state:{ factors:0.55,fibrinogen:180,platelets:95,lysis:0.08,heparin:0.00,temp:36.2,ph:7.33,ca:0.95,dilution:0.45,txa:0.0 } },
-  { id:"factor_def", name:"Déficit de factores (PFC requerido)", note:"R prolongado, corrección con plasma.",
+  { id:"factor_def", name:"Déficit de factores (PFC requerido)", note:"CT prolongado, corrección con plasma.",
     state:{ factors:0.35,fibrinogen:280,platelets:190,lysis:0.06,heparin:0.00,temp:36.5,ph:7.32,ca:1.00,dilution:0.20,txa:0.0 } },
-  { id:"thrombocytopenia", name:"Trombocitopenia / disfunción plaquetaria", note:"MA bajo con R relativamente normal.",
+  { id:"thrombocytopenia", name:"Trombocitopenia / disfunción plaquetaria", note:"MCF bajo con CT relativamente normal.",
     state:{ factors:0.80,fibrinogen:300,platelets:45,lysis:0.06,heparin:0.00,temp:36.7,ph:7.37,ca:1.05,dilution:0.15,txa:0.0 } },
-  { id:"hypofibrinogen", name:"Hipofibrinogenemia", note:"α bajo, K alto, MA bajo; responde a crio/fibrinógeno.",
+  { id:"hypofibrinogen", name:"Hipofibrinogenemia", note:"CFT prolongado, A10 bajo, MCF bajo; responde a crio/fibrinógeno.",
     state:{ factors:0.80,fibrinogen:95,platelets:170,lysis:0.06,heparin:0.00,temp:36.4,ph:7.33,ca:1.00,dilution:0.25,txa:0.0 } },
-  { id:"hyperfibrinolysis", name:"Hiperfibrinólisis", note:"LY30 alto; responde a TXA.",
+  { id:"hyperfibrinolysis", name:"Hiperfibrinólisis", note:"LI30 bajo; responde a TXA / APTEM.",
     state:{ factors:0.85,fibrinogen:260,platelets:160,lysis:0.45,heparin:0.00,temp:36.3,ph:7.30,ca:0.98,dilution:0.25,txa:0.0 } },
-  { id:"heparin_effect", name:"Efecto heparina", note:"R muy prolongado; protamina revierte.",
+  { id:"heparin_effect", name:"Efecto heparina", note:"CT muy prolongado en INTEM; HEPTEM revierte.",
     state:{ factors:0.85,fibrinogen:280,platelets:180,lysis:0.06,heparin:0.55,temp:36.5,ph:7.36,ca:1.02,dilution:0.15,txa:0.0 } },
   { id:"trauma_coagulopathy", name:"Coagulopatía del trauma", note:"Mixta: factores↓, fib↓, plaquetas↓, acidosis/hipotermia, lisis↑.",
     state:{ factors:0.40,fibrinogen:120,platelets:75,lysis:0.28,heparin:0.00,temp:34.2,ph:7.18,ca:0.85,dilution:0.35,txa:0.0 } },
   { id:"post_cpb", name:"Post-CEC (cirugía cardíaca)", note:"Heparina residual + plaquetopatía + hemodilución.",
     state:{ factors:0.55,fibrinogen:160,platelets:85,lysis:0.10,heparin:0.30,temp:35.8,ph:7.30,ca:0.90,dilution:0.40,txa:0.0 } },
-  { id:"pregnancy_hypercoag", name:"Embarazo (hipercoagulable)", note:"R algo corto, MA alto, lisis baja.",
+  { id:"pregnancy_hypercoag", name:"Embarazo (hipercoagulable)", note:"CT algo corto, MCF alto, lisis baja.",
     state:{ factors:1.05,fibrinogen:480,platelets:240,lysis:0.02,heparin:0.00,temp:36.8,ph:7.40,ca:1.10,dilution:0.08,txa:0.0 } }
 ];
 
+/* ---------- Ensayos ROTEM ---------- */
+const ASSAYS = [
+  { id:"EXTEM", name:"EXTEM", color:"rgba(89,183,255,.95)",  note:"Activación extrínseca (TF).",
+    apply:(s)=> ({...s, assay:{ ctMult:0.82, lysisMult:1.00, heparinNeutral:false, fibOnly:false }})
+  },
+  { id:"INTEM", name:"INTEM", color:"rgba(52,199,89,.95)",   note:"Activación intrínseca.",
+    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:1.00, heparinNeutral:false, fibOnly:false }})
+  },
+  { id:"FIBTEM", name:"FIBTEM", color:"rgba(255,214,10,.95)", note:"Inhibición plaquetaria → mide fibrina/fibrinógeno.",
+    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:1.00, heparinNeutral:false, fibOnly:true }})
+  },
+  { id:"APTEM", name:"APTEM", color:"rgba(255,59,48,.92)",   note:"Antifibrinolítico → descarta hiperfibrinólisis.",
+    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:0.25, heparinNeutral:false, fibOnly:false }})
+  },
+  { id:"HEPTEM", name:"HEPTEM", color:"rgba(160,120,255,.95)", note:"Heparinasa → neutraliza heparina.",
+    apply:(s)=> ({...s, assay:{ ctMult:0.92, lysisMult:1.00, heparinNeutral:true, fibOnly:false }})
+  },
+];
+
+let currentAssayId = "EXTEM";
+function getAssay(){ return ASSAYS.find(a=>a.id===currentAssayId) || ASSAYS[0]; }
+
+/* ---------- Rango/interpretación (orientativo) ---------- */
 const REF = {
-  R:  {min:4,  max:8,  unit:"min", hint:"Factores / heparina"},
-  K:  {min:1,  max:3,  unit:"min", hint:"Fibrinógeno + cinética"},
-  A:  {min:53, max:72, unit:"°",   hint:"Fibrinógeno funcional"},
-  MA: {min:50, max:70, unit:"mm",  hint:"Plaquetas + fibrina"},
-  LY30:{min:0, max:8,  unit:"%",   hint:"Fibrinólisis"}
+  CT:  {min:40,  max:100, unit:"s",  hint:"Inicio coagulación (2 mm)"},
+  CFT: {min:40,  max:160, unit:"s",  hint:"Formación coágulo (2→20 mm)"},
+  A10: {min:35,  max:65,  unit:"mm", hint:"Amplitud a 10 min"},
+  MCF: {min:50,  max:72,  unit:"mm", hint:"Fuerza máxima coágulo"},
+  LI30:{min:92,  max:100, unit:"%",  hint:"Índice lisis 30 min (alto=mejor)"}
 };
 
 const el = (id)=> document.getElementById(id);
@@ -649,7 +677,10 @@ const canvas = el("tegCanvas");
 const ctx = canvas.getContext("2d");
 
 const scenarioSelect = el("scenarioSelect");
+const assaySelect = el("assaySelect");
 const scenarioTag = el("scenarioTag");
+const assaySwatch = el("assaySwatch");
+
 const speedRange = el("speedRange");
 const speedVal = el("speedVal");
 const helpSelect = el("helpSelect");
@@ -688,25 +719,30 @@ let noiseSeed = mulberry32(987654);
 
 let state = null;
 let pendingEvents = [];
+
+// “parámetros internos” (mantengo p.R p.K p.A p.MA p.LY30 como motor)
+// luego derivamos CT/CFT/Ax/MCF/LI30 para UI
 let teg = {R:6, K:2, A:60, MA:60, LY30:2, CI:0};
+let rotem = { CTs:60, CFTs:80, A5:20, A10:40, A20:60, A30:65, A60:65, MCF:60, LI30:98, tCT:1.0 };
 
 const curve = {
   maxMin: 60,
-  samples: [],   // {t, amp} donde amp = "half-width" en mm
+  samples: [],   // {t, ampHalf} half-width en mm
   lastSampleMin: 0
 };
 
 /* ---------- Métricas UI ---------- */
 const METRIC_ORDER = [
-  {key:"R", label:"R", range:"4–8 min"},
-  {key:"K", label:"K", range:"1–3 min"},
-  {key:"A", label:"α", range:"53–72°"},
-  {key:"MA",label:"MA",range:"50–70 mm"},
-  {key:"LY30",label:"LY30",range:"0–8 %"}
+  {key:"CT",  label:"CT",  range:"40–100 s"},
+  {key:"CFT", label:"CFT", range:"40–160 s"},
+  {key:"A10", label:"A10", range:"35–65 mm"},
+  {key:"MCF", label:"MCF", range:"50–72 mm"},
+  {key:"LI30",label:"LI30",range:"92–100 %"},
 ];
 
 function badgeFor(key, value){
   const r = REF[key];
+  if(!r || value==null || Number.isNaN(value)) return {cls:"warn", text:"—"};
   if(value < r.min) return {cls:"warn", text:"Bajo"};
   if(value > r.max) return {cls:"warn", text:"Alto"};
   return {cls:"ok", text:"Normal"};
@@ -737,54 +773,60 @@ function log(msg){
   const ts = fmt(tMin,1).padStart(5," ");
   logEl.textContent = `[${ts} min] ${msg}\n` + logEl.textContent;
 }
-log("Simulador listo.");
+log("Simulador listo (ROTEM).");
 
-/* ---------- Motor fisiológico -> parámetros ---------- */
+/* ---------- Motor fisiológico -> parámetros internos ---------- */
 function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
 
 function computeTEGFromState(s){
-  const dil = clamp(s.dilution, 0, 0.70);
-  const effFactors = clamp(s.factors * (1 - 0.85*dil), 0.05, 1.25);
-  const effFib     = clamp(s.fibrinogen * (1 - 0.80*dil), 30, 650);
-  const effPlt     = clamp(s.platelets * (1 - 0.75*dil), 5, 350);
+  const assay = getAssay();
+  const s2 = assay.apply(s);
+  const a = s2.assay || { ctMult:1.0, lysisMult:1.0, heparinNeutral:false, fibOnly:false };
 
-  const tempPenalty = clamp((36.5 - s.temp) * 0.10, -0.2, 0.9);
-  const phPenalty   = clamp((7.35 - s.ph) * 1.8,  -0.2, 0.9);
-  const caPenalty   = clamp((1.05 - s.ca) * 1.2,  -0.2, 0.9);
+  const dil = clamp(s2.dilution, 0, 0.70);
+  const effFactors = clamp(s2.factors * (1 - 0.85*dil), 0.05, 1.25);
+  const effFib     = clamp(s2.fibrinogen * (1 - 0.80*dil), 30, 650);
+  const effPlt     = clamp(s2.platelets * (1 - 0.75*dil), 5, 350);
 
-  const hep = clamp(s.heparin, 0, 1);
+  const tempPenalty = clamp((36.5 - s2.temp) * 0.10, -0.2, 0.9);
+  const phPenalty   = clamp((7.35 - s2.ph) * 1.8,  -0.2, 0.9);
+  const caPenalty   = clamp((1.05 - s2.ca) * 1.2,  -0.2, 0.9);
 
+  const hep = clamp(a.heparinNeutral ? 0 : s2.heparin, 0, 1);
+
+  // R interno (lo usaremos para CT derivado)
   let R = 5.8;
   R *= (1 + 2.4*(1 - effFactors));
   R *= (1 + 3.2*hep);
   R *= (1 + 0.55*tempPenalty + 0.55*phPenalty + 0.35*caPenalty);
-  R = clamp(R, 2.0, 35.0);
+  R *= clamp(a.ctMult, 0.5, 1.2);
+  R = clamp(R, 1.2, 35.0);
 
   const fibNorm = clamp((effFib - 80) / (450 - 80), 0, 1);
   const factorNorm = clamp(effFactors, 0, 1.1) / 1.1;
 
   let A = 44 + 34*(0.72*fibNorm + 0.28*factorNorm);
   A -= 12*(tempPenalty + phPenalty)*0.35;
-  A = clamp(A, 30, 80);
+  A = clamp(A, 25, 82);
 
   let K = 4.2 - (A - 40)*0.055;
   K *= (1 + 0.25*(1 - effFactors));
-  K = clamp(K, 0.7, 12.0);
+  K = clamp(K, 0.6, 12.0);
 
-  const pltNorm = clamp((effPlt - 30) / (250 - 30), 0, 1);
+  const pltNorm = a.fibOnly ? 0.05 : clamp((effPlt - 30) / (250 - 30), 0, 1);
   const fibForMA = clamp((effFib - 80) / (450 - 80), 0, 1);
 
   let MA = 44 + 30*(0.62*pltNorm + 0.38*fibForMA);
   if(dil > 0.35 && hep > 0.20) MA -= 5;
   MA -= 8*(tempPenalty + phPenalty)*0.25;
-  MA = clamp(MA, 25, 80);
+  MA = clamp(MA, 18, 80);
 
-  const baseLysis = clamp(s.lysis, 0, 1);
-  const txa = clamp(s.txa, 0, 1);
-  const lysisEff = clamp(baseLysis * (1 - 0.75*txa), 0, 1);
+  const baseLysis = clamp(s2.lysis, 0, 1);
+  const txa = clamp(s2.txa, 0, 1);
+  const lysisEff = clamp(baseLysis * clamp(a.lysisMult, 0.1, 1.3) * (1 - 0.75*txa), 0, 1);
 
   let LY30 = 1.5 + 70*lysisEff*lysisEff;
-  LY30 = clamp(LY30, 0, 60);
+  LY30 = clamp(LY30, 0, 70);
 
   const CI = clamp(
     ( (7 - R) * 0.25 ) + ( (65 - K*10) * 0.01 ) + ( (A - 60) * 0.05 ) + ( (MA - 60) * 0.06 ) - (LY30 * 0.02 ),
@@ -794,49 +836,32 @@ function computeTEGFromState(s){
   return {R, K, A, MA, LY30, CI};
 }
 
-/* ---------- Half-width (mm) en función del tiempo ---------- */
+/* ---------- Curva (half-width mm) ---------- */
 function halfWidthAt(t, p){
   const R = p.R, K = p.K, MA = p.MA, alpha = p.A, LY30 = p.LY30;
-
   if(t <= R) return 0;
 
-  // microapertura inicial (ruido mecánico / baseline)
   const micro = clamp((t - R) * 1.6, 0, 2.0);
-
-  // Control de velocidad del ascenso según alpha (0.2..1.0)
   const slope = clamp((alpha - 30) / 50, 0.20, 1.00);
 
-  // Objetivo “clínico” para K: tiempo desde R hasta 20 mm
-  const A20 = 20; // mm
-  const tK = R + Math.max(0.2, K); // punto teórico de K (aprox)
-
-  // Parámetro de sigmoide: más slope => más empinada
-  // Centramos la sigmoide entre R y (R+K) para que K tenga sentido visual.
+  const tK = R + Math.max(0.2, K);
   const mid = R + 0.55 * (tK - R);
-  const sharp = lerp(0.35, 0.90, slope); // pendiente sigmoide
+  const sharp = lerp(0.35, 0.90, slope);
 
-  // Crecimiento sigmoide hacia MA (0..MA)
-  // Normalizamos tiempo alrededor de 'mid'
   const z = (t - mid) / Math.max(0.001, (tK - R)) * sharp;
   let w = MA / (1 + Math.exp(-z));
 
-  // Ajuste para que antes de R sea ~0, y después converja a MA
-  // (La sigmoide nunca llega exactamente a 0, lo “recortamos” con smoothstep)
   const u = clamp((t - R) / Math.max(0.001, (tK - R)), 0, 1);
   const gate = u*u*(3-2*u);
   w *= gate;
 
-  // Tiempo aproximado de MA (donde se estabiliza)
-  // En trazas reales suele “aplanarse” luego de unos minutos tras K
   const tMA = R + K + lerp(8, 14, (1 - slope));
 
-  // Plateau muy leve (para que no sea una meseta perfecta)
   if(t > tMA){
-    const settle = 1 - 0.02 * (1 - Math.exp(-(t - tMA) * 0.15)); // baja 2% máximo
+    const settle = 1 - 0.02 * (1 - Math.exp(-(t - tMA) * 0.15));
     w *= settle;
   }
 
-  // Lisis: a los 30 min post tMA, debe quedar en MA*(1 - LY30/100)
   if(t > tMA){
     const target = clamp(1 - LY30/100, 0.05, 1);
     const rate = -Math.log(target) / 30.0;
@@ -845,6 +870,37 @@ function halfWidthAt(t, p){
   }
 
   return clamp(Math.max(w, micro), 0, 80);
+}
+
+/* ---------- Derivados ROTEM ---------- */
+function fullAmpAt(tMin, p){
+  return clamp(2 * halfWidthAt(tMin, p), 0, 160);
+}
+function tWhenFullAmpReaches(targetFullAmp, p){
+  const dt = 0.05;
+  const maxSearch = curve.maxMin;
+  for(let tt=0; tt<=maxSearch; tt+=dt){
+    if(fullAmpAt(tt, p) >= targetFullAmp) return tt;
+  }
+  return null;
+}
+function computeROTEMDerived(p){
+  const tCT = tWhenFullAmpReaches(2, p);
+  const tA20 = tWhenFullAmpReaches(20, p);
+
+  const CTs  = tCT!=null ? tCT*60 : null;
+  const CFTs = (tCT!=null && tA20!=null) ? (tA20 - tCT)*60 : null;
+
+  const A5  = fullAmpAt(5, p);
+  const A10 = fullAmpAt(10, p);
+  const A20 = fullAmpAt(20, p);
+  const A30 = fullAmpAt(30, p);
+  const A60 = fullAmpAt(60, p);
+
+  const MCF = clamp(2*p.MA, 0, 160);
+  const LI30 = clamp(100 - p.LY30, 0, 100);
+
+  return { CTs, CFTs, A5, A10, A20, A30, A60, MCF, LI30, tCT };
 }
 
 /* ---------- Canvas resize (optimizado para iPad) ---------- */
@@ -868,14 +924,12 @@ function drawGrid(w,h){
   const midY = (top + bottom) / 2;
 
   ctx.strokeStyle = "rgba(255,255,255,.06)";
-  // bordes
   ctx.beginPath();
   ctx.moveTo(left, top);
   ctx.lineTo(left, bottom);
   ctx.lineTo(right, bottom);
   ctx.stroke();
 
-  // vertical (tiempo)
   const xTicks = 12; // 0..60 -> cada 5
   for(let i=1;i<=xTicks;i++){
     const x = lerp(left, right, i/xTicks);
@@ -894,8 +948,7 @@ function drawGrid(w,h){
     }
   }
 
-  // horizontal (amplitud simétrica)
-  const yTicks = 8; // ±80
+  const yTicks = 8; // ±80 (half width)
   for(let i=1;i<=yTicks;i++){
     const yTop = lerp(midY, top, i/yTicks);
     const yBot = lerp(midY, bottom, i/yTicks);
@@ -914,7 +967,6 @@ function drawGrid(w,h){
     }
   }
 
-  // línea central (0)
   ctx.save();
   ctx.strokeStyle = "rgba(233,241,255,.16)";
   ctx.lineWidth = 1.2;
@@ -924,28 +976,16 @@ function drawGrid(w,h){
   ctx.stroke();
   ctx.restore();
 
-  // labels
   ctx.fillStyle = "rgba(233,241,255,.65)";
   ctx.font = "12px system-ui";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText("Amplitud (mm)", left+6, top+4);
+  ctx.fillText("Amplitud (mm) [half-width]", left+6, top+4);
 
   ctx.textAlign = "right";
   ctx.fillText("Tiempo", right-4, bottom+6);
 
   ctx.restore();
-}
-
-function tAtAmp(targetAmp, p){
-  // busca el primer tiempo (>=R) donde halfWidth >= targetAmp
-  // simple search, barato y estable
-  const maxSearch = 60;
-  const dt = 0.05; // 3 segundos
-  for(let tt = p.R; tt <= maxSearch; tt += dt){
-    if(halfWidthAt(tt, p) >= targetAmp) return tt;
-  }
-  return null;
 }
 
 function drawLabel(x, y, text, color){
@@ -954,13 +994,13 @@ function drawLabel(x, y, text, color){
   ctx.fillStyle = color;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  // halo oscuro mínimo para legibilidad sin “cartel”
   ctx.shadowColor = "rgba(0,0,0,.55)";
   ctx.shadowBlur = 6;
   ctx.fillText(text, x, y);
   ctx.restore();
 }
 
+/* ---------- Marcadores ROTEM (CT, CFT, Ax) ---------- */
 function drawMarkers(w,h, p){
   const pad = 18;
   const left = pad, top = pad, right = w-pad, bottom = h-pad;
@@ -968,141 +1008,80 @@ function drawMarkers(w,h, p){
   const xScale = (right-left) / curve.maxMin;
   const yScale = (bottom-top) / (2*80);
 
-  // Colores sutiles
-  const cR   = "rgba(89,183,255,.65)";
-  const cK   = "rgba(255,214,10,.55)";
-  const cA   = "rgba(52,199,89,.55)";
-  const cMA  = "rgba(233,241,255,.55)";
-  const cLY  = "rgba(255,59,48,.55)";
+  const assay = getAssay();
+  const cMain = assay.color.replace("0.95",".75").replace("0.92",".75");
+  const cCT   = "rgba(89,183,255,.65)";
+  const cCFT  = "rgba(255,214,10,.55)";
+  const cAx   = "rgba(233,241,255,.55)";
 
-  // --- R (línea vertical)
-  const xR = left + p.R * xScale;
-  ctx.save();
-  ctx.strokeStyle = cR;
-  ctx.lineWidth = 1.2;
-  ctx.setLineDash([5,6]);
-  ctx.beginPath();
-  ctx.moveTo(xR, top);
-  ctx.lineTo(xR, bottom);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
-  drawLabel(clamp(xR+6, left+6, right-60), top+18, `R`, cR);
+  const r = computeROTEMDerived(p);
 
-  // --- K: desde R hasta 20 mm (A20)
-  const A20 = 20;
-  const t20 = tAtAmp(A20, p);
-  if(t20){
-    const x20 = left + t20 * xScale;
-    const y20Top = midY - (A20 * yScale);
-    const y20Bot = midY + (A20 * yScale);
-
-    // bracket horizontal R->t20 sobre la línea central
+  if(r.tCT!=null){
+    const xCT = left + r.tCT*xScale;
     ctx.save();
-    ctx.strokeStyle = cK;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(xR, midY);
-    ctx.lineTo(x20, midY);
-    ctx.stroke();
-
-    // “tics” verticales para que se entienda que es K
-    ctx.beginPath();
-    ctx.moveTo(xR, midY-8); ctx.lineTo(xR, midY+8);
-    ctx.moveTo(x20, midY-8); ctx.lineTo(x20, midY+8);
-    ctx.stroke();
-    ctx.restore();
-
-    drawLabel(clamp((xR+x20)/2 - 10, left+6, right-60), midY-14, `K`, cK);
-
-    // guía 20 mm (muy tenue, para no ensuciar)
-    ctx.save();
-    ctx.strokeStyle = "rgba(255,214,10,.18)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3,7]);
-    ctx.beginPath();
-    ctx.moveTo(left, y20Top);
-    ctx.lineTo(right, y20Top);
-    ctx.moveTo(left, y20Bot);
-    ctx.lineTo(right, y20Bot);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-  }
-
-  // --- α (ángulo): lo dibujamos cerca del tramo inicial (entre R y R+K)
-  // No calculamos tangente exacta; representamos el ángulo usando el valor de α.
-  // Triángulo pequeño con base 6 min, altura según tan(alpha)
-  const baseMin = 6;
-  const xA0 = xR + 6; // un poquito a la derecha de R
-  const xA1 = left + (p.R + baseMin) * xScale;
-  const basePx = Math.max(20, xA1 - xA0);
-  const rad = (p.A * Math.PI) / 180;
-  const risePx = clamp(Math.tan(rad) * basePx * 0.15, 8, 38);
-
-  ctx.save();
-  ctx.strokeStyle = cA;
-  ctx.lineWidth = 1.4;
-  // línea base
-  ctx.beginPath();
-  ctx.moveTo(xA0, midY);
-  ctx.lineTo(xA0 + basePx, midY);
-  ctx.stroke();
-  // línea inclinada
-  ctx.beginPath();
-  ctx.moveTo(xA0, midY);
-  ctx.lineTo(xA0 + basePx, midY - risePx);
-  ctx.stroke();
-  ctx.restore();
-
-  drawLabel(clamp(xA0 + basePx + 6, left+6, right-80), midY - risePx, `α`, cA);
-
-  // --- MA (bracket vertical del ancho máximo)
-  const MA = p.MA;
-  const yMAu = midY - (MA * yScale);
-  const yMAd = midY + (MA * yScale);
-
-  // Elegimos x del MA cerca donde se estabiliza (tMA aprox, misma lógica que halfWidthAt)
-  const slope = clamp((p.A - 30)/50, 0.20, 1.00);
-  const tMA = p.R + p.K + lerp(8, 14, (1 - slope));
-  const xMA = left + clamp(tMA, 0, curve.maxMin) * xScale;
-
-  ctx.save();
-  ctx.strokeStyle = cMA;
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.moveTo(xMA, yMAu);
-  ctx.lineTo(xMA, yMAd);
-  ctx.stroke();
-  // “tics” horizontales (llave simple)
-  ctx.beginPath();
-  ctx.moveTo(xMA-8, yMAu); ctx.lineTo(xMA+8, yMAu);
-  ctx.moveTo(xMA-8, yMAd); ctx.lineTo(xMA+8, yMAd);
-  ctx.stroke();
-  ctx.restore();
-
-  drawLabel(clamp(xMA+10, left+6, right-80), midY, `MA`, cMA);
-
-  // --- LY30 (medición a 30 min post tMA)
-  const tLY = tMA + 30;
-  if(tLY <= curve.maxMin){
-    const xLY = left + tLY * xScale;
-    ctx.save();
-    ctx.strokeStyle = cLY;
+    ctx.strokeStyle = cCT;
     ctx.lineWidth = 1.2;
     ctx.setLineDash([5,6]);
     ctx.beginPath();
-    ctx.moveTo(xLY, top);
-    ctx.lineTo(xLY, bottom);
+    ctx.moveTo(xCT, top);
+    ctx.lineTo(xCT, bottom);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
-
-    drawLabel(clamp(xLY+6, left+6, right-80), top+34, `LY30`, cLY);
+    drawLabel(clamp(xCT+6, left+6, right-80), top+22, "CT", cCT);
   }
+
+  const tA20 = tWhenFullAmpReaches(20, p);
+  if(r.tCT!=null && tA20!=null){
+    const x1 = left + r.tCT*xScale;
+    const x2 = left + tA20*xScale;
+    ctx.save();
+    ctx.strokeStyle = cCFT;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x1, midY);
+    ctx.lineTo(x2, midY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x1, midY-8); ctx.lineTo(x1, midY+8);
+    ctx.moveTo(x2, midY-8); ctx.lineTo(x2, midY+8);
+    ctx.stroke();
+    ctx.restore();
+    drawLabel(clamp((x1+x2)/2 - 14, left+6, right-80), midY-14, "CFT", cCFT);
+  }
+
+  const points = [
+    {t:5,  label:"A5"},
+    {t:10, label:"A10"},
+    {t:20, label:"A20"},
+    {t:30, label:"A30"},
+    {t:60, label:"A60"},
+  ];
+
+  ctx.save();
+  ctx.fillStyle = cMain;
+  ctx.strokeStyle = "rgba(0,0,0,.35)";
+  ctx.lineWidth = 2;
+
+  for(const pt of points){
+    if(pt.t > curve.maxMin) continue;
+    const ampFull = fullAmpAt(pt.t, p);
+    const half = ampFull/2;
+    const x = left + pt.t*xScale;
+    const y = midY - (half * yScale);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    const ly = clamp(y - 14, top+18, bottom-18);
+    drawLabel(clamp(x+6, left+6, right-60), ly, pt.label, cAx);
+  }
+  ctx.restore();
 }
 
-/* ---------- Render: banda TEG simétrica (realista) ---------- */
+/* ---------- Render: banda simétrica ---------- */
 function redraw(force=false){
   const w = canvas.getBoundingClientRect().width;
   const h = canvas.getBoundingClientRect().height;
@@ -1115,91 +1094,122 @@ function redraw(force=false){
   const midY = (top + bottom) / 2;
 
   const xScale = (right-left) / curve.maxMin;
-  const yScale = (bottom-top) / (2*80); // total height representa 160 mm (±80)
+  const yScale = (bottom-top) / (2*80);
 
-  // sombreado suave si LY30 alto (fibrinolisis)
-  if(teg.LY30 > 12){
+  const assay = getAssay();
+  assaySwatch.style.background = assay.color;
+  assaySwatch.style.boxShadow = `0 0 0 3px ${assay.color.replace("0.95","0.12").replace("0.92","0.12")}`;
+
+  // sombreado leve si lisis alta (LI30 bajo)
+  if(rotem && rotem.LI30 < 90){
     ctx.save();
-    ctx.fillStyle = "rgba(255,59,48,.06)";
+    ctx.fillStyle = "rgba(255,59,48,.05)";
     ctx.fillRect(left, top, right-left, bottom-top);
     ctx.restore();
   }
 
-  // guía R
+  // Reactivo bar (se llena con el tiempo)
+  const barH = 6;
+  const barW = (right-left);
+  const progress = clamp(tMin / curve.maxMin, 0, 1);
+
   ctx.save();
-  ctx.strokeStyle = "rgba(89,183,255,.18)";
-  ctx.setLineDash([6,6]);
-  ctx.beginPath();
-  ctx.moveTo(left + teg.R*xScale, top);
-  ctx.lineTo(left + teg.R*xScale, bottom);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(255,255,255,.06)";
+  ctx.fillRect(left, top+2, barW, barH);
+  ctx.fillStyle = assay.color.replace("0.95","0.55").replace("0.92","0.55");
+  ctx.fillRect(left, top+2, barW*progress, barH);
   ctx.restore();
 
-  // --- Construimos path superior e inferior ---
-  if(curve.samples.length < 2) return;
+  if(curve.samples.length < 2){
+    drawMarkers(w,h, teg);
+    return;
+  }
 
-  // relleno (más real que una sola línea)
+  // relleno
   ctx.save();
   const grad = ctx.createLinearGradient(0, top, 0, bottom);
-  grad.addColorStop(0, "rgba(89,183,255,.08)");
-  grad.addColorStop(0.5, "rgba(89,183,255,.16)");
-  grad.addColorStop(1, "rgba(89,183,255,.08)");
+  const cTop = assay.color.replace("0.95","0.08").replace("0.92","0.08");
+  const cMid = assay.color.replace("0.95","0.16").replace("0.92","0.16");
+  grad.addColorStop(0, cTop);
+  grad.addColorStop(0.5, cMid);
+  grad.addColorStop(1, cTop);
   ctx.fillStyle = grad;
 
   ctx.beginPath();
-  // superior
   for(let i=0;i<curve.samples.length;i++){
     const s = curve.samples[i];
     const x = left + s.t * xScale;
-    const y = midY - (s.amp * yScale);
+    const y = midY - (s.ampHalf * yScale);
     if(i===0) ctx.moveTo(x,y);
     else ctx.lineTo(x,y);
   }
-  // inferior (en reversa)
   for(let i=curve.samples.length-1;i>=0;i--){
     const s = curve.samples[i];
     const x = left + s.t * xScale;
-    const y = midY + (s.amp * yScale);
+    const y = midY + (s.ampHalf * yScale);
     ctx.lineTo(x,y);
   }
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 
-  // bordes (superior e inferior)
   function strokeEdge(sign){
     ctx.save();
     ctx.lineWidth = 2.3;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     ctx.strokeStyle = "rgba(233,241,255,.88)";
-    ctx.shadowColor = "rgba(89,183,255,.25)";
+    ctx.shadowColor = assay.color.replace("0.95","0.25").replace("0.92","0.25");
     ctx.shadowBlur = 12;
 
     ctx.beginPath();
     for(let i=0;i<curve.samples.length;i++){
       const s = curve.samples[i];
       const x = left + s.t * xScale;
-      const y = midY + sign*(s.amp * yScale);
+      const y = midY + sign*(s.ampHalf * yScale);
       if(i===0) ctx.moveTo(x,y);
       else ctx.lineTo(x,y);
     }
     ctx.stroke();
     ctx.restore();
   }
-  strokeEdge(-1); // superior
-  strokeEdge(+1); // inferior
-	drawMarkers(w, h, teg);
+  strokeEdge(-1);
+  strokeEdge(+1);
 
-  // texto pequeño, sin invadir
+  drawMarkers(w,h, teg);
+
+  // “pill” de info arriba a la derecha (evita superposición)
   ctx.save();
-  ctx.fillStyle = "rgba(233,241,255,.70)";
-  ctx.font = "13px system-ui";
+  const text = `CT=${rotem.CTs!=null?fmt(rotem.CTs,0):"—"}s  CFT=${rotem.CFTs!=null?fmt(rotem.CFTs,0):"—"}s  A10=${fmt(rotem.A10,0)}  MCF=${fmt(rotem.MCF,0)}  LI30=${fmt(rotem.LI30,0)}%`;
+  ctx.font = "12px system-ui";
   ctx.textAlign = "right";
   ctx.textBaseline = "top";
-  ctx.fillText(`R=${fmt(teg.R,1)}  K=${fmt(teg.K,1)}  α=${fmt(teg.A,0)}°  MA=${fmt(teg.MA,0)}  LY30=${fmt(teg.LY30,0)}%`,
-               right, top+4);
+
+  const paddingX = 10, paddingY = 6;
+  const metrics = ctx.measureText(text);
+  const boxW = metrics.width + paddingX*2;
+  const boxH = 22;
+
+  const x = right;
+  const y = top + 12;
+
+  ctx.fillStyle = "rgba(0,0,0,.28)";
+  ctx.strokeStyle = "rgba(255,255,255,.10)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const rx = x - boxW, ry = y;
+  const r = 10;
+  ctx.moveTo(rx+r, ry);
+  ctx.arcTo(rx+boxW, ry, rx+boxW, ry+boxH, r);
+  ctx.arcTo(rx+boxW, ry+boxH, rx, ry+boxH, r);
+  ctx.arcTo(rx, ry+boxH, rx, ry, r);
+  ctx.arcTo(rx, ry, rx+boxW, ry, r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(233,241,255,.78)";
+  ctx.fillText(text, x - paddingX, y + 5);
   ctx.restore();
 }
 
@@ -1209,9 +1219,13 @@ function setMetric(key, value){
   const bEl = el(`b_${key}`);
   if(!vEl || !bEl) return;
 
-  let display = value;
-  if(key === "A" || key === "MA" || key === "LY30") display = fmt(value,0);
-  else display = fmt(value,1);
+  let display;
+  if(value==null || Number.isNaN(value)){
+    display = "—";
+  }else{
+    if(key==="CT" || key==="CFT") display = fmt(value,0);
+    else display = fmt(value,0);
+  }
 
   vEl.textContent = display + " " + (REF[key]?.unit || "");
   const b = badgeFor(key, value);
@@ -1224,12 +1238,20 @@ function updateHints(){
     hintLine.textContent = "Modo evaluación: sin pistas.";
     return;
   }
-  let hints = [];
-  if(teg.R > 10) hints.push("R prolongado → pensar factores / heparina (PFC / protamina según contexto).");
-  if(teg.MA < 45) hints.push("MA bajo → pensar plaquetas y/o fibrinógeno (plaquetas / crio).");
-  if(teg.A < 50 || teg.K > 4) hints.push("α bajo o K alto → sospechar hipofibrinogenemia (crio/fibrinógeno).");
-  if(teg.LY30 > 12) hints.push("LY30 alto → fibrinólisis (considerar TXA).");
-  if(hints.length===0) hints.push("Curva compatible con hemostasia adecuada.");
+
+  const assay = getAssay();
+  const hints = [];
+
+  if(rotem.CTs!=null && rotem.CTs > 120){
+    if(assay.id==="HEPTEM" || assay.id==="INTEM") hints.push("CT prolongado → considerar heparina residual (comparar INTEM vs HEPTEM / protamina).");
+    else hints.push("CT prolongado → déficit factores o anticoagulación (PFC / revisar heparina).");
+  }
+  if(rotem.CFTs!=null && rotem.CFTs > 180) hints.push("CFT prolongado → formación lenta del coágulo (fibrinógeno bajo / hemodilución).");
+  if(rotem.A10 < 35) hints.push("A10 bajo → pensar fibrinógeno y/o plaquetas (FIBTEM ayuda a diferenciar).");
+  if(rotem.MCF < 50) hints.push("MCF bajo → coágulo débil (plaquetas/fibrina).");
+  if(rotem.LI30 < 90) hints.push("LI30 bajo → fibrinólisis relevante (TXA / comparar EXTEM vs APTEM).");
+
+  if(hints.length===0) hints.push("Curva compatible con hemostasia adecuada para el contexto.");
   hintLine.textContent = hints[0];
 }
 
@@ -1246,22 +1268,20 @@ function processEvents(){
   }
 }
 
-/* ---------- Muestreo de curva (half-width) ---------- */
+/* ---------- Muestreo de curva ---------- */
 function sampleCurve(){
-  // Más velocidad => muestreo un poco más denso para que no se "rompa" la traza
-const step = clamp(0.14 - (simSpeed-6)*0.0015, 0.06, 0.14);
+  const step = clamp(0.14 - (simSpeed-6)*0.0015, 0.06, 0.14);
+
   while(curve.lastSampleMin + step <= tMin){
     curve.lastSampleMin += step;
 
     const base = halfWidthAt(curve.lastSampleMin, teg);
 
-    // ruido proporcional (más realista en bordes)
     const n = smoothNoise(noiseSeed, curve.lastSampleMin*0.55) * 1.0;
-    const amp = clamp(base + n * (0.35 + base/70), 0, 80);
+    const ampHalf = clamp(base + n * (0.35 + base/70), 0, 80);
 
-    curve.samples.push({t: curve.lastSampleMin, amp});
+    curve.samples.push({t: curve.lastSampleMin, ampHalf});
 
-    // ventana
     const minT = tMin - curve.maxMin;
     if(minT > 0){
       while(curve.samples.length && curve.samples[0].t < minT) curve.samples.shift();
@@ -1285,17 +1305,18 @@ function tick(){
 
   processEvents();
   teg = computeTEGFromState(state);
+  rotem = computeROTEMDerived(teg);
 
   sampleCurve();
   redraw();
 
   clockText.textContent = `t=${fmt(tMin,1)} min`;
 
-  setMetric("R", teg.R);
-  setMetric("K", teg.K);
-  setMetric("A", teg.A);
-  setMetric("MA", teg.MA);
-  setMetric("LY30", teg.LY30);
+  setMetric("CT", rotem.CTs);
+  setMetric("CFT", rotem.CFTs);
+  setMetric("A10", rotem.A10);
+  setMetric("MCF", rotem.MCF);
+  setMetric("LI30", rotem.LI30);
 
   updateHints();
 }
@@ -1313,7 +1334,10 @@ function newTest(){
   curve.lastSampleMin = 0;
   pendingEvents = [];
   noiseSeed = mulberry32((Math.random()*1e9)>>>0);
+
   teg = computeTEGFromState(state);
+  rotem = computeROTEMDerived(teg);
+
   setRunning(true);
   log("Nuevo test iniciado.");
   redraw(true);
@@ -1324,7 +1348,7 @@ function resetAll(){
   log("Reset completo al escenario.");
 }
 
-/* ---------- Escenarios ---------- */
+/* ---------- Escenarios / Ensayos ---------- */
 function populateScenarios(){
   scenarioSelect.innerHTML = "";
   for(const s of SCENARIOS){
@@ -1332,6 +1356,15 @@ function populateScenarios(){
     opt.value = s.id;
     opt.textContent = s.name;
     scenarioSelect.appendChild(opt);
+  }
+}
+function populateAssays(){
+  assaySelect.innerHTML = "";
+  for(const a of ASSAYS){
+    const opt = document.createElement("option");
+    opt.value = a.id;
+    opt.textContent = a.name;
+    assaySelect.appendChild(opt);
   }
 }
 function getScenarioById(id){
@@ -1345,18 +1378,24 @@ function syncAdvancedSliders(){
   heparinRange.value = Math.round(state.heparin*100); heparinVal.textContent = `${Math.round(state.heparin*100)}%`;
   lysisRange.value = Math.round(state.lysis*100); lysisVal.textContent = `${Math.round(state.lysis*100)}%`;
 }
+function updateScenarioTag(){
+  const sc = getScenarioById(scenarioSelect.value);
+  const a = getAssay();
+  scenarioTag.textContent = `Escenario: ${sc.name} • ${a.name}`;
+  scenarioTag.title = a.note || sc.note || sc.name;
+}
 function loadScenario(id){
   const sc = getScenarioById(id);
   state = deepCopy(sc.state);
-  scenarioTag.textContent = `Escenario: ${sc.name}`;
-  scenarioTag.title = sc.note || sc.name;
   syncAdvancedSliders();
+  updateScenarioTag();
   log(`Escenario cargado: ${sc.name}.`);
   teg = computeTEGFromState(state);
+  rotem = computeROTEMDerived(teg);
   redraw(true);
 }
 
-/* ---------- Intervenciones (mismas, con retardo) ---------- */
+/* ---------- Intervenciones (con retardo) ---------- */
 function eventDelay(){
   if(delayMode.value === "fast") return {min:0.7, max:2.0};
   return {min:2.5, max:7.0};
@@ -1403,11 +1442,25 @@ const interventions = {
 
 /* ---------- UI events ---------- */
 populateScenarios();
+populateAssays();
+
 scenarioSelect.value = "normal";
+assaySelect.value = currentAssayId;
+
 loadScenario("normal");
 newTest();
 
-scenarioSelect.addEventListener("change", ()=>{ loadScenario(scenarioSelect.value); newTest(); });
+scenarioSelect.addEventListener("change", ()=>{
+  loadScenario(scenarioSelect.value);
+  newTest();
+});
+
+assaySelect.addEventListener("change", ()=>{
+  currentAssayId = assaySelect.value;
+  updateScenarioTag();
+  log(`Ensayo: ${getAssay().name}.`);
+  newTest();
+});
 
 speedRange.addEventListener("input", ()=>{
   simSpeed = Number(speedRange.value);
